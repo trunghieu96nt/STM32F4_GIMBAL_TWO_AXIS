@@ -1,5 +1,7 @@
 #include "include.h"
 
+int32_t i32test;
+
 void delay_us(uint16_t period){
 
   	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
@@ -41,6 +43,7 @@ void Board_Init()
   SysTick_Config(SystemCoreClock/100);
   
   Gimbal_GPIO_Init();
+  Gimbal_ENC_Init();
 }
 
 int main(void)
@@ -57,7 +60,7 @@ int main(void)
     }
     else
     {
-      
+      i32test = Gimbal_ENC0_Get_Pos();
     } // end if(tick_count == 100)
   } //end while(true)
 }

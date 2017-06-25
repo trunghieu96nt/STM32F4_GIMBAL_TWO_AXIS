@@ -2,5 +2,6 @@
 #include "system_timetick.h"
 
 #include "gimbal_gpio.h"
+#include "gimbal_enc.h"
 
 #include "stdbool.h"

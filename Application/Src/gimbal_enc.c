@@ -30,13 +30,22 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "gimbal_enc.h"
-#include "stm32f4xx_gpio.h"
+#include "stm32f4xx.h"
 
 /* Public variables ----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+static int32_t i32Enc0_AngleCur = 0;
+static int32_t i32Enc0_Dp = 0;
+static int32_t i32Enc0_P0 = 0,i32Enc0_P1 = 0;
+
+static int32_t i32Enc1_AngleCur = 0;
+static int32_t i32Enc1_Dp = 0;
+static int32_t i32Enc1_P0 = 0,i32Enc1_P1 = 0;
+
 /* Private function prototypes -----------------------------------------------*/
 void Gimbal_ENC0_Init(void);
+void Gimbal_ENC1_Init(void);
 
 /* Functions ---------------------------------------------------------*/
 /**
@@ -48,8 +57,16 @@ void Gimbal_ENC0_Init(void);
 void Gimbal_ENC_Init(void)
 {
   Gimbal_ENC0_Init();
+  Gimbal_ENC1_Init();
 }
 
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Initialize Gimbal ENC0
+  * @note   ...
+  * @param  none
+  * @retval none
+  */
 void Gimbal_ENC0_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStructure;
@@ -81,6 +98,126 @@ void Gimbal_ENC0_Init(void)
   /* TIM enable counter */
   TIM_Cmd(ENC0_TIM_POS, ENABLE);  
   ENC0_TIM_POS->CNT = 0;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Get ENC0 Pos
+  * @note   ...
+  * @param  none
+  * @retval int32_t i32Enc0_AngleCur
+  */
+int32_t Gimbal_ENC0_Get_Pos(void)
+{
+  i32Enc0_P0 = (int32_t)ENC0_TIM_POS->CNT;
+
+  if (!IS_TIMER_32BIT(ENC0_TIM_POS))
+  {
+    i32Enc0_Dp = i32Enc0_P0 - i32Enc0_P1;
+    if (i32Enc0_Dp > 32768)
+    {
+      i32Enc0_Dp -= 65536;
+    }
+    else if (i32Enc0_Dp < -32768)
+    {
+      i32Enc0_Dp += 65536;
+    }
+    i32Enc0_P1 = i32Enc0_P0;
+    i32Enc0_AngleCur += i32Enc0_Dp;
+  }
+  else
+  {
+    i32Enc0_AngleCur = i32Enc0_P0;
+  }
+  return i32Enc0_AngleCur;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Reset ENC0 Pos
+  * @note   Reset i32Enc0_AngleCur
+  * @param  none
+  * @retval none
+  */
+void Gimbal_ENC0_Reset(void)
+{
+  i32Enc0_AngleCur = 0;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Initialize Gimbal ENC1
+  * @note   ...
+  * @param  none
+  * @retval none
+  */
+void Gimbal_ENC1_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStructure;
+  
+  /* TIM clock enable */
+  if (IS_APB2_TIMER(ENC1_TIM_POS))
+  {
+    RCC_APB2PeriphClockCmd(ENC1_TIM_CLK_POS, ENABLE);    
+  }
+  else
+  {
+    RCC_APB1PeriphClockCmd(ENC1_TIM_CLK_POS, ENABLE);
+  }
+  RCC_AHB1PeriphClockCmd(ENC1_PERIPH_PORT_POS, ENABLE);
+  /* TIM channel1,2 configuration */
+  GPIO_InitStructure.GPIO_Pin   = ENC1_A_POS | ENC1_B_POS;
+  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_100MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_UP;
+  GPIO_Init(GPIOB, &GPIO_InitStructure);
+
+  GPIO_PinAFConfig(ENC1_PORT_POS, ENC1_A_SOURCE_POS, ENC1_AF_POS);
+  GPIO_PinAFConfig(ENC1_PORT_POS, ENC1_B_SOURCE_POS, ENC1_AF_POS);
+
+  /* Initialise encoder interface */
+  TIM_EncoderInterfaceConfig(ENC1_TIM_POS, TIM_EncoderMode_TI12, TIM_ICPolarity_Rising, TIM_ICPolarity_Rising);
+  
+  TIM_Cmd(ENC1_TIM_POS, ENABLE);  
+  ENC1_TIM_POS->CNT = 0;
+}
+
+int32_t Gimbal_ENC1_Get_Pos(void)
+{
+  i32Enc1_P0 = (int32_t)ENC1_TIM_POS->CNT;
+
+  if (!IS_TIMER_32BIT(ENC1_TIM_POS))
+  {
+    i32Enc1_Dp = i32Enc1_P0 - i32Enc1_P1;
+    if (i32Enc1_Dp > 32768)
+    {
+      i32Enc1_Dp -= 65536;
+    }
+    else if (i32Enc1_Dp < -32768)
+    {
+      i32Enc1_Dp += 65536;
+    }
+    i32Enc1_P1 = i32Enc1_P0;
+    i32Enc1_AngleCur += i32Enc1_Dp;
+  }
+  else
+  {
+    i32Enc1_AngleCur = i32Enc1_P0;
+  }
+  return i32Enc1_AngleCur;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Reset ENC1 Pos
+  * @note   Reset i32Enc1_AngleCur
+  * @param  none
+  * @retval none
+  */
+void Gimbal_ENC1_Reset(void)
+{
+  i32Enc1_AngleCur = 0;
 }
 
 /*********************************END OF FILE**********************************/
