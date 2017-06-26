@@ -3,5 +3,6 @@
 
 #include "gimbal_gpio.h"
 #include "gimbal_enc.h"
+#include "gimbal_pwm.h"
 
 #include "stdbool.h"

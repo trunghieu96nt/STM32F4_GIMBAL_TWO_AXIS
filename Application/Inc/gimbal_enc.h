@@ -25,10 +25,6 @@
    
    
 /* Define --------------------------------------------------------------------*/
-#define IS_TIMER_32BIT(x) ((x == TIM2) || (x == TIM5))
-#define IS_APB2_TIMER(x) ((x == TIM1) || (x == TIM8) || (x == TIM9) \
-   || (x == TIM10) || (x == TIM11))
-   
 #define ENC0_TIM_POS                    TIM1 
 #define ENC0_TIM_CLK_POS                RCC_APB2Periph_TIM1
 #define ENC0_PERIPH_PORT_POS            RCC_AHB1Periph_GPIOA
@@ -54,7 +50,7 @@ void Gimbal_ENC_Init(void);
 
 /* Functions -----------------------------------------------------------------*/
 int32_t Gimbal_ENC0_Get_Pos(void);
-void Gimbal_ENC1_Reset(void);
+void Gimbal_ENC0_Reset(void);
   
 int32_t Gimbal_ENC1_Get_Pos(void);
 void Gimbal_ENC1_Reset(void);

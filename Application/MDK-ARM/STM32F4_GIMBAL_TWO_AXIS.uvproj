@@ -435,6 +435,11 @@
               <FileType>1</FileType>
               <FilePath>..\Src\gimbal_enc.c</FilePath>
             </File>
+            <File>
+              <FileName>gimbal_pwm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\gimbal_pwm.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

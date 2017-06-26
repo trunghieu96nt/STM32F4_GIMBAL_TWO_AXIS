@@ -50,6 +50,9 @@ void Gimbal_DI_Init(void);
 void Gimbal_GPIO_Init(void)
 {
   Gimbal_Led_Init();
+  Gimbal_Led_Reset(LED1_PIN);
+  Gimbal_Led_Reset(LED2_PIN);
+  Gimbal_Led_Reset(LED3_PIN);
   //Gimbal_SW_Init();
   //Gimbal_DI_Init;
 }

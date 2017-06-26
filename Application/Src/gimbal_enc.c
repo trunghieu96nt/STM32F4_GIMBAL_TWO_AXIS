@@ -34,6 +34,10 @@
 
 /* Public variables ----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
+#define IS_TIMER_32BIT(x) ((x == TIM2) || (x == TIM5))
+#define IS_APB2_TIMER(x) ((x == TIM1) || (x == TIM8) || (x == TIM9) \
+   || (x == TIM10) || (x == TIM11))
+
 /* Private variables ---------------------------------------------------------*/
 static int32_t i32Enc0_AngleCur = 0;
 static int32_t i32Enc0_Dp = 0;
@@ -58,6 +62,9 @@ void Gimbal_ENC_Init(void)
 {
   Gimbal_ENC0_Init();
   Gimbal_ENC1_Init();
+  
+  Gimbal_ENC0_Reset();
+  Gimbal_ENC1_Reset();
 }
 
 /* Functions ---------------------------------------------------------*/
