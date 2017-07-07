@@ -53,8 +53,8 @@ void el6(void) { i32test4--; };
 
 void Board_Init()
 {
-  /* Enable SysTick at 10ms interrupt */
-  SysTick_Config(SystemCoreClock/100);
+  /* Enable SysTick at 1ms interrupt */
+  SysTick_Config(SystemCoreClock/F_CTRL);
   
   Gimbal_GPIO_Init();
   Gimbal_ENC_Init();
@@ -71,21 +71,24 @@ void Board_Init()
   Gimbal_PWM1_Set_Duty(400);
 }
 
+void IMUErrorHanlder(void)
+{
+  
+}
+
 int main(void)
 {
   Board_Init();
     
   while(true)
   {
-    if(tick_count == 100)
+    i32test1 = Gimbal_ENC1_Get_Pos();
+    Gimbal_ADIS_Read_Timeout(5000, IMUErrorHanlder);
+    if(tick_flag == true)
     {
-      tick_count = 0;
-      Gimbal_Led_Toggle(LED1_PIN);
-    }
-    else
-    {
-      i32test1 = Gimbal_ENC1_Get_Pos();
-    } // end if(tick_count == 100)
+      tick_flag = false;
+      //Gimbal_Led_Toggle(LED1_PIN);
+    }// end if(tick_flag == true)
   } //end while(true)
 }
 

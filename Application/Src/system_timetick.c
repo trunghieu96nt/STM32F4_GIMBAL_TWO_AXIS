@@ -59,3 +59,12 @@ void SysTick_Handler(void)
   tick_count++;
 }
 
+uint32_t SysTick_GetTick(void)
+{
+  return tick_count;
+}
+
+bool SysTick_IsTimeout(uint32_t ui32StartTime_ms, uint32_t ui32TimeOut_ms)
+{
+  return (tick_count - ui32StartTime_ms > ui32TimeOut_ms * F_CTRL / 1000);
+}

@@ -21,17 +21,27 @@
 #endif
 
 /* Includes ------------------------------------------------------------------*/
+#include "stdbool.h"
+#include "stdint.h"
 /* Define --------------------------------------------------------------------*/
-#define USE_IMU_RX_DMA_IT     1
+#define USE_IMU_RX_DMA_IT     0
 
 #if USE_IMU_RX_DMA_IT
-#define IMU_TXBUFF_SIZE       256
-#define IMU_RXBUFF_SIZE       256
+#define IMU_TXBUFF_SIZE       87
+#define IMU_RXBUFF_SIZE       87
 #else
 #define IMU_TXBUFF_SIZE       1024
 #define IMU_RXBUFF_SIZE       1024
 #endif
 
+#define IMU_FRAME_MAX_LEN     128
+#define IMU_ELEMENT_MAX_LEN   15
+
+#define IMU_SCALE_EULER_UNIT  0.0001 // deg
+#define IMU_SCALE_GYRO_UNIT   0.1 // mrad/s
+#define IMU_SCALE_MAG_UNIT    0.1 // mgauss
+#define IMU_SCALE_ACC_UNIT    0.1 // mg
+#define IMU_SCALE_FOG_UNIT    0.01 // mdeg/s
 
 #define IMU_USART             UART4
 #define IMU_USART_CLK         RCC_APB1Periph_UART4
@@ -56,9 +66,31 @@
 #define IMU_RX_TC_IT_FLAG     DMA_IT_TCIF2
 #define IMU_RX_HT_IT_FLAG     DMA_IT_HTIF2
 #define IMU_RX_Interrupt      DMA1_Stream2_IRQHandler
+
+/* Struct --------------------------------------------------------------------*/
+typedef struct
+{
+  bool isavailable;
+  double euler_x;
+  double euler_y;
+  double euler_z;
+  double gyro_x;
+  double gyro_y;
+  double gyro_z;
+  double mag_x;
+  double mag_y;
+  double mag_z;
+  double acc_x;
+  double acc_y;
+  double acc_z;
+  double gyro_fog;
+} IMUData_t;
+
 /* Initialization and Configuration functions --------------------------------*/
 void Gimbal_ADIS_Init(void);
 /* Functions -----------------------------------------------------------------*/
+bool Gimbal_ADIS_Read(void);
+void Gimbal_ADIS_Read_Timeout(uint32_t ui32TimeOut_ms, void (*timeoutHandler)(void));
 
 #ifdef __cplusplus
 }

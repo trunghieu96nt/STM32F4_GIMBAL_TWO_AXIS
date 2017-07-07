@@ -8,6 +8,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx.h"
+#include "stdbool.h"
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/
@@ -18,6 +19,8 @@
     Sampling time is set by changing value PERIOD
     in the file "system_timetick.c"
 */
+
+#define F_CTRL (float)1000
 
 extern uint32_t tick_count;
 extern uint32_t tick_flag;
@@ -32,6 +35,8 @@ void SVC_Handler(void);
 void DebugMon_Handler(void);
 void PendSV_Handler(void);
 void SysTick_Handler(void);
+uint32_t SysTick_GetTick(void);
+bool SysTick_IsTimeout(uint32_t ui32StartTime_ms, uint32_t ui32TimeOut_ms);
 
 #ifdef __cplusplus
 }

@@ -31,16 +31,22 @@
 /* Includes ------------------------------------------------------------------*/
 #include "gimbal_adis.h"
 #include "stm32f4xx.h"
+#include "string.h"
+#include "stdlib.h"
+#include "system_timetick.h"
 
 /* Public variables ----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-uint8_t ui8RXBuff[IMU_RXBUFF_SIZE]= {0};
+static uint8_t ui8RXBuff[IMU_RXBUFF_SIZE]= {0};
+IMUData_t imuData;
 /* Private function prototypes -----------------------------------------------*/
+bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame);
+
 /* Functions ---------------------------------------------------------*/
 /**
   * @brief  Initialize Gimbal Adis
-  * @note   ...
+  * @note   DMA UART RX, use IT by define USE_IMU_RX_DMA_IT
   * @param  none
   * @retval none
   */
@@ -49,7 +55,9 @@ void Gimbal_ADIS_Init(void)
   USART_InitTypeDef     USART_InitStructure;
   GPIO_InitTypeDef      GPIO_InitStructure;
   DMA_InitTypeDef       DMA_InitStructure;
+#if USE_IMU_RX_DMA_IT
   NVIC_InitTypeDef      NVIC_InitStructure;
+#endif
   
   RCC_AHB1PeriphClockCmd(IMU_PORT_CLK, ENABLE);  
   GPIO_InitStructure.GPIO_Pin   = IMU_TX | IMU_RX;
@@ -98,13 +106,6 @@ void Gimbal_ADIS_Init(void)
   DMA_Cmd(IMU_RX_DMA_STREAM, ENABLE);
 
 #if USE_IMU_RX_DMA_IT
-  DMA_ITConfig(IMU_RX_DMA_STREAM, DMA_IT_HT, ENABLE);
-  NVIC_InitStructure.NVIC_IRQChannel = IMU_RX_STREAM_IRQ;
-  NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-  
   DMA_ITConfig(IMU_RX_DMA_STREAM, DMA_IT_TC, ENABLE);
   NVIC_InitStructure.NVIC_IRQChannel = IMU_RX_STREAM_IRQ;
   NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
@@ -115,25 +116,206 @@ void Gimbal_ADIS_Init(void)
 }
 
 #if USE_IMU_RX_DMA_IT
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  IMU_RX_Interrupt Handler
+  * @note   Handle with exact length
+  * @param  none
+  * @retval none
+  */
 void IMU_RX_Interrupt(void)
 {
+  uint8_t ui8rawIMUData[IMU_RXBUFF_SIZE];
+  
   if(DMA_GetITStatus(IMU_RX_DMA_STREAM, IMU_RX_TC_IT_FLAG) == SET)
   {
     //DMA_Cmd(IMU_RX_DMA_STREAM, DISABLE);
     DMA_ClearITPendingBit(IMU_RX_DMA_STREAM, IMU_RX_TC_IT_FLAG);
+    memcpy(ui8rawIMUData, ui8RXBuff, IMU_RXBUFF_SIZE);
+    Gimbal_ADIS_Parse(ui8rawIMUData);
   }
-  else if(DMA_GetITStatus(IMU_RX_DMA_STREAM, IMU_RX_HT_IT_FLAG) == SET)
-  {
-    DMA_ClearITPendingBit(IMU_RX_DMA_STREAM, IMU_RX_HT_IT_FLAG);
-  }
-}
-#else
-void gimbal_adis_read(void)
-{
-  static uint8_t *pui8_RXBuff;
-  
-  
 }
 #endif
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  memrchr
+  * @note   search from *str backward n
+  * @param  pointer *str, desired int (or char) c, length n
+  * @retval none
+  */
+void *memrchr(const void *str, int c, size_t n)
+{
+  if(n != 0)
+  {
+    const unsigned char *p = str;
+    do {
+      if (*p-- == (unsigned char) c)
+      {
+        return (void *) (p + 1);
+      }
+    } while (--n);
+  }
+  return NULL;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Gimbal_ADIS_Parse
+  * @note   parse raw IMU frame
+  * @param  pointer *pui8IMUFrame
+  * @retval true if parse correctly and vice versa
+  */
+bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
+{
+  uint32_t ui32Idx = 0;
+  uint8_t *pui8End = NULL, *pui8Start = pui8IMUFrame + 2;
+  
+  if(strlen((char *)pui8IMUFrame) != 87) return false;
+  //get euler
+  for(ui32Idx = 0; ui32Idx < 3; ui32Idx++)
+  {
+    pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
+    if(pui8End == NULL) return false;
+    *pui8End = 0;
+    *(&imuData.euler_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_EULER_UNIT;
+    pui8Start = pui8End + 2;
+  }
+  //get gyro
+  for(ui32Idx = 0; ui32Idx < 3; ui32Idx++)
+  {
+    pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
+    if(pui8End == NULL) return false;
+    *pui8End = 0;
+    *(&imuData.gyro_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_GYRO_UNIT;
+    pui8Start = pui8End + 2;
+  }
+  //get mag
+  for(ui32Idx = 0; ui32Idx < 3; ui32Idx++)
+  {
+    pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
+    if(pui8End == NULL) return false;
+    *pui8End = 0;
+    *(&imuData.mag_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_MAG_UNIT;
+    pui8Start = pui8End + 2;
+  }
+  //get acc
+  for(ui32Idx = 0; ui32Idx < 3; ui32Idx++)
+  {
+    pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
+    if(pui8End == NULL) return false;
+    *pui8End = 0;
+    *(&imuData.acc_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_ACC_UNIT;
+    pui8Start = pui8End + 2;
+  }
+  //get gyro fog
+  pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
+  if(pui8End == NULL) return false;
+  *pui8End = 0;
+  imuData.gyro_fog = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_FOG_UNIT;
+  imuData.isavailable = true;
+  return true;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Gimbal_ADIS_Read
+  * @note   get raw IMU frame and call Gimbal_ADIS_Parse()
+  * @param  none
+  * @retval true if get correctly and vice versa
+  */
+bool Gimbal_ADIS_Read(void)
+{
+  static uint8_t *pui8RXBuffCur = &ui8RXBuff[IMU_RXBUFF_SIZE - 1];
+  static uint8_t *pui8RXBuffPre = &ui8RXBuff[IMU_RXBUFF_SIZE - 1];
+  uint8_t *pui8EndChr = NULL, *pui8StartChr = NULL;
+  uint8_t ui8IMUFrame[IMU_FRAME_MAX_LEN];
+  
+  if(IMU_RX_DMA_STREAM->NDTR == IMU_RXBUFF_SIZE)
+    pui8RXBuffCur = &ui8RXBuff[IMU_RXBUFF_SIZE - 1];
+  else
+    pui8RXBuffCur = &ui8RXBuff[IMU_RXBUFF_SIZE - IMU_RX_DMA_STREAM->NDTR - 1];
+  
+  if(pui8RXBuffCur > pui8RXBuffPre)
+  {
+    //search 0x0d backward from pui8RXBuffCur to pui8RXBuffPre
+    pui8EndChr = memrchr(pui8RXBuffCur, 0x0d,pui8RXBuffCur - pui8RXBuffPre + 1);
+    if(pui8EndChr == NULL) return false;
+    //search 0x0a backward from pui8EndChr to pui8RXBuffPre
+    pui8StartChr = memrchr(pui8EndChr, 0x0a,pui8EndChr - pui8RXBuffPre + 1);
+    if(pui8StartChr == NULL) return false;
+    memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
+    ui8IMUFrame[pui8EndChr - pui8StartChr + 1] = 0;
+  }
+  else if(pui8RXBuffCur < pui8RXBuffPre)
+  {
+    //search 0x0d backward from pui8RXBuffCur to ui8RXBuff
+    pui8EndChr = memrchr(pui8RXBuffCur, 0x0d,pui8RXBuffCur - ui8RXBuff + 1);
+    if(pui8EndChr != NULL)
+    {
+      //search 0x0a backward from pui8EndChr to ui8RXBuff
+      pui8StartChr = memrchr(pui8EndChr, 0x0a,pui8EndChr - ui8RXBuff + 1);
+      if(pui8StartChr != NULL)
+      {
+        memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
+        ui8IMUFrame[pui8EndChr - pui8StartChr + 1] = 0;
+      }
+      else
+      {
+        //search 0x0a backward from &ui8RXBuff[IMU_RXBUFF_SIZE - 1] to pui8RXBuffPre
+        pui8StartChr = memrchr(&ui8RXBuff[IMU_RXBUFF_SIZE - 1], 0x0a,&ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8RXBuffPre + 1);
+        if(pui8StartChr == NULL) return false;
+        memcpy(ui8IMUFrame, pui8StartChr, &ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1);
+        memcpy(&ui8IMUFrame[&ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1], ui8RXBuff, pui8EndChr - ui8RXBuff + 1);
+        ui8IMUFrame[&ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1 + pui8EndChr - ui8RXBuff + 1] = 0;
+      }
+    }
+    else
+    {
+      //search 0x0d backward from &ui8RXBuff[IMU_RXBUFF_SIZE - 1] to pui8RXBuffPre
+      pui8EndChr = memrchr(&ui8RXBuff[IMU_RXBUFF_SIZE - 1], 0x0d,&ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8RXBuffPre + 1);
+      if(pui8EndChr == NULL) return false;
+      //search 0x0a backward from pui8EndChr to pui8RXBuffPre
+      pui8StartChr = memrchr(pui8EndChr, 0x0a,pui8EndChr - pui8RXBuffPre + 1);
+      if(pui8StartChr == NULL) return false;
+      memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
+      ui8IMUFrame[pui8EndChr - pui8StartChr + 1] = 0;
+    }
+  }
+  else //pui8RXBuffCur == pui8RXBuffPr
+  {
+    return false;
+  }
+  pui8RXBuffPre = pui8EndChr;
+  if(Gimbal_ADIS_Parse(ui8IMUFrame) == false) return false;
+  return true;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Gimbal_ADIS_Read_Timeout
+  * @note   get raw IMU frame and call Gimbal_ADIS_Parse() with timeout
+  * @param  desired timeout ui32TimeOut_ms, function for handle timeout
+  * @retval none
+  */
+void Gimbal_ADIS_Read_Timeout(uint32_t ui32TimeOut_ms, void (*timeoutHandler)(void))
+{
+  static uint32_t ui32ReadDoneTime = 0;
+  if(Gimbal_ADIS_Read() == false)
+  {
+    if(SysTick_IsTimeout(ui32ReadDoneTime, ui32TimeOut_ms) == true)
+    {
+      if(timeoutHandler != NULL)
+      {
+        timeoutHandler();
+      }
+    }
+  }
+  else
+  {
+    ui32ReadDoneTime = SysTick_GetTick();
+  }
+}
+
 
 /*********************************END OF FILE**********************************/
