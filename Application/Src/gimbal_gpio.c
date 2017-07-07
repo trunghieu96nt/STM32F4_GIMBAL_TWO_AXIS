@@ -403,4 +403,6 @@ void EL_LIMIT_EXTI_IRQn_Handler(void)
     }
   }
 }
+
+//void Gimbal_GPIO_Read_Pin(uint16_t GPIO_Pin)
 /*********************************END OF FILE**********************************/

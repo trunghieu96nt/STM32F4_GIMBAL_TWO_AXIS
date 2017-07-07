@@ -52,7 +52,7 @@
 #define IMU_RX                GPIO_Pin_1
 #define IMU_RX_SOURCE         GPIO_PinSource1
 #define IMU_AF                GPIO_AF_UART4
-#define IMU_BAUDRATE          (uint32_t)9600 //921600
+#define IMU_BAUDRATE          (uint32_t)921600 //9600
 
 #define IMU_AHB_PERIPH_DMA    RCC_AHB1Periph_DMA1
 #define IMU_DATA_REG          (uint32_t)IMU_USART + 0x04
@@ -70,7 +70,7 @@
 /* Struct --------------------------------------------------------------------*/
 typedef struct
 {
-  bool isavailable;
+  bool isAvailable;
   double euler_x;
   double euler_y;
   double euler_z;
@@ -90,7 +90,7 @@ typedef struct
 void Gimbal_ADIS_Init(void);
 /* Functions -----------------------------------------------------------------*/
 bool Gimbal_ADIS_Read(void);
-void Gimbal_ADIS_Read_Timeout(uint32_t ui32TimeOut_ms, void (*timeoutHandler)(void));
+bool Gimbal_ADIS_Read_IsTimeout(uint32_t ui32TimeOut_ms);
 
 #ifdef __cplusplus
 }

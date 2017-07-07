@@ -1,8 +1,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "system_timetick.h"
 
-uint32_t tick_count;
-uint32_t tick_flag;
+uint32_t tick_count = 0; // for system
+uint32_t sysTickCount = 0; // for user
+uint32_t tick_flag = 0;
 
 
 void NMI_Handler(void)
@@ -57,6 +58,7 @@ void SysTick_Handler(void)
 {
   tick_flag = 1;
   tick_count++;
+  sysTickCount++;
 }
 
 uint32_t SysTick_GetTick(void)

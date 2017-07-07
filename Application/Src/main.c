@@ -1,79 +1,30 @@
 #include "include.h"
 
-int32_t i32test1, i32test2, i32test3, i32test4;
+extern IMUData_t imuData;
 
-void delay_us(uint16_t period)
+void delay_us(uint32_t micros)
 {
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
-  TIM6->PSC = 83; // clk = SystemCoreClock /2/(PSC+1) = 1MHz
-  TIM6->ARR = period-1;
-  TIM6->CNT = 0;
-  TIM6->EGR = 1; // update registers
-
-  TIM6->SR  = 0; // clear overflow flag
-  TIM6->CR1 = 1; // enable Timer6
-
-  while (!TIM6->SR);
-    
-  TIM6->CR1 = 0; // stop Timer6
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, DISABLE);
+  RCC_ClocksTypeDef RCC_Clocks;	
+  /* Get system clocks */
+  RCC_GetClocksFreq(&RCC_Clocks);	
+  micros = micros * (RCC_Clocks.HCLK_Frequency / 4000000) - 10;
+  /* 4 cycles for one loop */
+  while (micros--);
 }
-
-void delay_ms(uint16_t period)
-{
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, ENABLE);
-  TIM6->PSC = 8399; // clk = SystemCoreClock /2 /(PSC+1) = 10KHz
-  TIM6->ARR = period-1;
-  TIM6->CNT = 0;
-  TIM6->EGR = 1; // update registers;
-
-  TIM6->SR  = 0; // clear overflow flag
-  TIM6->CR1 = 1; // enable Timer6
-
-  while (!TIM6->SR);
-    
-  TIM6->CR1 = 0; // stop Timer6
-  RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM6, DISABLE);
-}
-
-void el1(void) { i32test2++; };
-void el2(void) { i32test2--; };
-void az1(void)
-{
-  i32test3++;
-  Gimbal_PWM1_Set_Duty(0);
-};
-void az2(void)
-{
-  i32test3--;
-  Gimbal_PWM1_Set_Duty(0);
-};
-void el5(void) { i32test4++; };
-void el6(void) { i32test4--; };
 
 void Board_Init()
 {
   /* Enable SysTick at 1ms interrupt */
-  SysTick_Config(SystemCoreClock/F_CTRL);
+  SysTick_Config(SystemCoreClock / F_CTRL);
   
   Gimbal_GPIO_Init();
   Gimbal_ENC_Init();
   Gimbal_PWM_Init();
   Gimbal_ADIS_Init();
   
-  El_Home_Falling_Register(el1);
-  El_Home_Rising_Register(el2);
-  Az_Home_Falling_Register(az1);
-  Az_Home_Rising_Register(az2);
-  El_Limit_Falling_Register(el5);
-  El_Limit_Rising_Register(el6);
-  
-  Gimbal_PWM1_Set_Duty(400);
-}
-
-void IMUErrorHanlder(void)
-{
-  
+  delay_us(1000000);
+  Gimbal_Control_Home();
+  //Gimbal_PWM1_Set_Duty(100);
 }
 
 int main(void)
@@ -82,14 +33,26 @@ int main(void)
     
   while(true)
   {
-    i32test1 = Gimbal_ENC1_Get_Pos();
-    Gimbal_ADIS_Read_Timeout(5000, IMUErrorHanlder);
+    Gimbal_ADIS_Read_IsTimeout(500);
+    if(imuData.isAvailable == false)
+    {
+      if((sysTickCount % 500) < 250)
+        Gimbal_Led_Set(LED2_PIN);
+      else
+        Gimbal_Led_Reset(LED2_PIN);
+    }
+    else
+      Gimbal_Led_Reset(LED2_PIN);
+    if(sysTickCount > 1000)
+    {
+      sysTickCount = 0;
+      Gimbal_Led_Toggle(LED1_PIN);
+    }
     if(tick_flag == true)
     {
       tick_flag = false;
-      //Gimbal_Led_Toggle(LED1_PIN);
-    }// end if(tick_flag == true)
-  } //end while(true)
+    }
+  }
 }
 
 

@@ -213,7 +213,6 @@ bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
   if(pui8End == NULL) return false;
   *pui8End = 0;
   imuData.gyro_fog = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_FOG_UNIT;
-  imuData.isavailable = true;
   return true;
 }
 
@@ -298,23 +297,23 @@ bool Gimbal_ADIS_Read(void)
   * @param  desired timeout ui32TimeOut_ms, function for handle timeout
   * @retval none
   */
-void Gimbal_ADIS_Read_Timeout(uint32_t ui32TimeOut_ms, void (*timeoutHandler)(void))
+bool Gimbal_ADIS_Read_IsTimeout(uint32_t ui32TimeOut_ms)
 {
   static uint32_t ui32ReadDoneTime = 0;
   if(Gimbal_ADIS_Read() == false)
   {
     if(SysTick_IsTimeout(ui32ReadDoneTime, ui32TimeOut_ms) == true)
     {
-      if(timeoutHandler != NULL)
-      {
-        timeoutHandler();
-      }
+        imuData.isAvailable = false;
+        return false;
     }
   }
   else
   {
     ui32ReadDoneTime = SysTick_GetTick();
+    imuData.isAvailable = true;
   }
+  return true;
 }
 
 

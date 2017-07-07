@@ -23,6 +23,7 @@
 #define F_CTRL (float)1000
 
 extern uint32_t tick_count;
+extern uint32_t sysTickCount;
 extern uint32_t tick_flag;
 
 
