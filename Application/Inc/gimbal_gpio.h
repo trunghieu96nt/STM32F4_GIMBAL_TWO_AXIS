@@ -64,17 +64,17 @@ typedef void (*PulseHandle_t)(void);
 #define EL_LIMIT_EXTI_IRQn_Handler        EXTI2_IRQHandler
 
 /* SW Pin */
-#define SW_PERIPH_GPIO        RCC_AHB1Periph_GPIOC
-#define SW_GPIO               GPIOC
-#define SW1_PIN               GPIO_Pin_6
-#define SW2_PIN               GPIO_Pin_8
+#define SW_PERIPH_GPIO                    RCC_AHB1Periph_GPIOC
+#define SW_GPIO                           GPIOC
+#define SW1_PIN                           GPIO_Pin_6
+#define SW2_PIN                           GPIO_Pin_8
 
 /* LED Pin */
-#define LED_PERIPH_GPIO       RCC_AHB1Periph_GPIOA
-#define LED_GPIO              GPIOA
-#define LED1_PIN              GPIO_Pin_12
-#define LED2_PIN              GPIO_Pin_11
-#define LED3_PIN              GPIO_Pin_10
+#define LED_PERIPH_GPIO                   RCC_AHB1Periph_GPIOA
+#define LED_GPIO                          GPIOA
+#define LED1_PIN                          GPIO_Pin_12
+#define LED2_PIN                          GPIO_Pin_11
+#define LED3_PIN                          GPIO_Pin_10
 
 /* Initialization and Configuration functions --------------------------------*/
 void Gimbal_GPIO_Init(void);

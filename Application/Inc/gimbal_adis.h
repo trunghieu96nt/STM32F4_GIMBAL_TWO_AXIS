@@ -36,6 +36,8 @@
 
 #define IMU_FRAME_MAX_LEN     128
 #define IMU_ELEMENT_MAX_LEN   15
+#define IMU_START_FRAME       0x0a
+#define IMU_END_FRAME         0x0d
 
 #define IMU_SCALE_EULER_UNIT  0.0001 // deg
 #define IMU_SCALE_GYRO_UNIT   0.1 // mrad/s
@@ -52,7 +54,7 @@
 #define IMU_RX                GPIO_Pin_1
 #define IMU_RX_SOURCE         GPIO_PinSource1
 #define IMU_AF                GPIO_AF_UART4
-#define IMU_BAUDRATE          (uint32_t)921600 //9600
+#define IMU_BAUDRATE          (uint32_t)9600 //921600//9600
 
 #define IMU_AHB_PERIPH_DMA    RCC_AHB1Periph_DMA1
 #define IMU_DATA_REG          (uint32_t)IMU_USART + 0x04

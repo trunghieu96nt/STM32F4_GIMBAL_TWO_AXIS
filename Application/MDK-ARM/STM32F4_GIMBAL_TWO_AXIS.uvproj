@@ -450,6 +450,11 @@
               <FileType>1</FileType>
               <FilePath>..\Src\gimbal_control.c</FilePath>
             </File>
+            <File>
+              <FileName>gimbal_pc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\gimbal_pc.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

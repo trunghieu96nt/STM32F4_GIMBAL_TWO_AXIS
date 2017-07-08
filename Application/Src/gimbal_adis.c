@@ -31,6 +31,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "gimbal_adis.h"
 #include "stm32f4xx.h"
+#include "gimbal_utils.h"
 #include "string.h"
 #include "stdlib.h"
 #include "system_timetick.h"
@@ -38,8 +39,8 @@
 /* Public variables ----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static uint8_t ui8RXBuff[IMU_RXBUFF_SIZE]= {0};
-IMUData_t imuData;
+static uint8_t ui8IMURxBuff[IMU_RXBUFF_SIZE]= {0};
+IMUData_t imuData = {false}; //initial isAvailable value.
 /* Private function prototypes -----------------------------------------------*/
 bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame);
 
@@ -86,7 +87,7 @@ void Gimbal_ADIS_Init(void)
   DMA_DeInit(IMU_RX_DMA_STREAM);  
   DMA_InitStructure.DMA_Channel            = IMU_RX_DMA_CHANNEL;
   DMA_InitStructure.DMA_DIR                = DMA_DIR_PeripheralToMemory;
-  DMA_InitStructure.DMA_Memory0BaseAddr    = (uint32_t)&ui8RXBuff[0];
+  DMA_InitStructure.DMA_Memory0BaseAddr    = (uint32_t)&ui8IMURxBuff[0];
   DMA_InitStructure.DMA_PeripheralBaseAddr = IMU_DATA_REG;
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
   DMA_InitStructure.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
@@ -131,33 +132,11 @@ void IMU_RX_Interrupt(void)
   {
     //DMA_Cmd(IMU_RX_DMA_STREAM, DISABLE);
     DMA_ClearITPendingBit(IMU_RX_DMA_STREAM, IMU_RX_TC_IT_FLAG);
-    memcpy(ui8rawIMUData, ui8RXBuff, IMU_RXBUFF_SIZE);
+    memcpy(ui8rawIMUData, ui8IMURxBuff, IMU_RXBUFF_SIZE);
     Gimbal_ADIS_Parse(ui8rawIMUData);
   }
 }
 #endif
-
-/* Functions ---------------------------------------------------------*/
-/**
-  * @brief  memrchr
-  * @note   search from *str backward n
-  * @param  pointer *str, desired int (or char) c, length n
-  * @retval none
-  */
-void *memrchr(const void *str, int c, size_t n)
-{
-  if(n != 0)
-  {
-    const unsigned char *p = str;
-    do {
-      if (*p-- == (unsigned char) c)
-      {
-        return (void *) (p + 1);
-      }
-    } while (--n);
-  }
-  return NULL;
-}
 
 /* Functions ---------------------------------------------------------*/
 /**
@@ -225,35 +204,35 @@ bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
   */
 bool Gimbal_ADIS_Read(void)
 {
-  static uint8_t *pui8RXBuffCur = &ui8RXBuff[IMU_RXBUFF_SIZE - 1];
-  static uint8_t *pui8RXBuffPre = &ui8RXBuff[IMU_RXBUFF_SIZE - 1];
+  static uint8_t *pui8IMURxBuffCur = &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1];
+  static uint8_t *pui8IMURxBuffPre = &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1];
   uint8_t *pui8EndChr = NULL, *pui8StartChr = NULL;
   uint8_t ui8IMUFrame[IMU_FRAME_MAX_LEN];
   
   if(IMU_RX_DMA_STREAM->NDTR == IMU_RXBUFF_SIZE)
-    pui8RXBuffCur = &ui8RXBuff[IMU_RXBUFF_SIZE - 1];
+    pui8IMURxBuffCur = &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1];
   else
-    pui8RXBuffCur = &ui8RXBuff[IMU_RXBUFF_SIZE - IMU_RX_DMA_STREAM->NDTR - 1];
+    pui8IMURxBuffCur = &ui8IMURxBuff[IMU_RXBUFF_SIZE - IMU_RX_DMA_STREAM->NDTR - 1];
   
-  if(pui8RXBuffCur > pui8RXBuffPre)
+  if(pui8IMURxBuffCur > pui8IMURxBuffPre)
   {
-    //search 0x0d backward from pui8RXBuffCur to pui8RXBuffPre
-    pui8EndChr = memrchr(pui8RXBuffCur, 0x0d,pui8RXBuffCur - pui8RXBuffPre + 1);
+    //search IMU_END_FRAME backward from pui8IMURxBuffCur to pui8IMURxBuffPre
+    pui8EndChr = memrchr(pui8IMURxBuffCur, IMU_END_FRAME,pui8IMURxBuffCur - pui8IMURxBuffPre + 1);
     if(pui8EndChr == NULL) return false;
-    //search 0x0a backward from pui8EndChr to pui8RXBuffPre
-    pui8StartChr = memrchr(pui8EndChr, 0x0a,pui8EndChr - pui8RXBuffPre + 1);
+    //search IMU_START_FRAME backward from pui8EndChr to pui8IMURxBuffPre
+    pui8StartChr = memrchr(pui8EndChr, IMU_START_FRAME,pui8EndChr - pui8IMURxBuffPre + 1);
     if(pui8StartChr == NULL) return false;
     memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
     ui8IMUFrame[pui8EndChr - pui8StartChr + 1] = 0;
   }
-  else if(pui8RXBuffCur < pui8RXBuffPre)
+  else if(pui8IMURxBuffCur < pui8IMURxBuffPre)
   {
-    //search 0x0d backward from pui8RXBuffCur to ui8RXBuff
-    pui8EndChr = memrchr(pui8RXBuffCur, 0x0d,pui8RXBuffCur - ui8RXBuff + 1);
+    //search IMU_END_FRAME backward from pui8IMURxBuffCur to ui8IMURxBuff
+    pui8EndChr = memrchr(pui8IMURxBuffCur, IMU_END_FRAME,pui8IMURxBuffCur - ui8IMURxBuff + 1);
     if(pui8EndChr != NULL)
     {
-      //search 0x0a backward from pui8EndChr to ui8RXBuff
-      pui8StartChr = memrchr(pui8EndChr, 0x0a,pui8EndChr - ui8RXBuff + 1);
+      //search IMU_START_FRAME backward from pui8EndChr to ui8IMURxBuff
+      pui8StartChr = memrchr(pui8EndChr, IMU_START_FRAME,pui8EndChr - ui8IMURxBuff + 1);
       if(pui8StartChr != NULL)
       {
         memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
@@ -261,31 +240,31 @@ bool Gimbal_ADIS_Read(void)
       }
       else
       {
-        //search 0x0a backward from &ui8RXBuff[IMU_RXBUFF_SIZE - 1] to pui8RXBuffPre
-        pui8StartChr = memrchr(&ui8RXBuff[IMU_RXBUFF_SIZE - 1], 0x0a,&ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8RXBuffPre + 1);
+        //search IMU_START_FRAME backward from &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] to pui8IMURxBuffPre
+        pui8StartChr = memrchr(&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1], IMU_START_FRAME,&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8IMURxBuffPre + 1);
         if(pui8StartChr == NULL) return false;
-        memcpy(ui8IMUFrame, pui8StartChr, &ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1);
-        memcpy(&ui8IMUFrame[&ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1], ui8RXBuff, pui8EndChr - ui8RXBuff + 1);
-        ui8IMUFrame[&ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1 + pui8EndChr - ui8RXBuff + 1] = 0;
+        memcpy(ui8IMUFrame, pui8StartChr, &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1);
+        memcpy(&ui8IMUFrame[&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1], ui8IMURxBuff, pui8EndChr - ui8IMURxBuff + 1);
+        ui8IMUFrame[&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1 + pui8EndChr - ui8IMURxBuff + 1] = 0;
       }
     }
     else
     {
-      //search 0x0d backward from &ui8RXBuff[IMU_RXBUFF_SIZE - 1] to pui8RXBuffPre
-      pui8EndChr = memrchr(&ui8RXBuff[IMU_RXBUFF_SIZE - 1], 0x0d,&ui8RXBuff[IMU_RXBUFF_SIZE - 1] - pui8RXBuffPre + 1);
+      //search IMU_END_FRAME backward from &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] to pui8IMURxBuffPre
+      pui8EndChr = memrchr(&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1], IMU_END_FRAME,&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8IMURxBuffPre + 1);
       if(pui8EndChr == NULL) return false;
-      //search 0x0a backward from pui8EndChr to pui8RXBuffPre
-      pui8StartChr = memrchr(pui8EndChr, 0x0a,pui8EndChr - pui8RXBuffPre + 1);
+      //search IMU_START_FRAME backward from pui8EndChr to pui8IMURxBuffPre
+      pui8StartChr = memrchr(pui8EndChr, IMU_START_FRAME,pui8EndChr - pui8IMURxBuffPre + 1);
       if(pui8StartChr == NULL) return false;
       memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
       ui8IMUFrame[pui8EndChr - pui8StartChr + 1] = 0;
     }
   }
-  else //pui8RXBuffCur == pui8RXBuffPr
+  else //pui8IMURxBuffCur == pui8IMURxBuffPr
   {
     return false;
   }
-  pui8RXBuffPre = pui8EndChr;
+  pui8IMURxBuffPre = pui8EndChr;
   if(Gimbal_ADIS_Parse(ui8IMUFrame) == false) return false;
   return true;
 }
@@ -294,8 +273,9 @@ bool Gimbal_ADIS_Read(void)
 /**
   * @brief  Gimbal_ADIS_Read_Timeout
   * @note   get raw IMU frame and call Gimbal_ADIS_Parse() with timeout
-  * @param  desired timeout ui32TimeOut_ms, function for handle timeout
-  * @retval none
+  * @param  desired timeout ui32TimeOut_ms
+  * @retval true if timeout and vice versa (do not use return if you
+            do not understand)
   */
 bool Gimbal_ADIS_Read_IsTimeout(uint32_t ui32TimeOut_ms)
 {
@@ -305,7 +285,7 @@ bool Gimbal_ADIS_Read_IsTimeout(uint32_t ui32TimeOut_ms)
     if(SysTick_IsTimeout(ui32ReadDoneTime, ui32TimeOut_ms) == true)
     {
         imuData.isAvailable = false;
-        return false;
+        return true;
     }
   }
   else
@@ -313,7 +293,7 @@ bool Gimbal_ADIS_Read_IsTimeout(uint32_t ui32TimeOut_ms)
     ui32ReadDoneTime = SysTick_GetTick();
     imuData.isAvailable = true;
   }
-  return true;
+  return false;
 }
 
 
