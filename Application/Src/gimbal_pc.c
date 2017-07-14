@@ -34,6 +34,7 @@
 #include "gimbal_utils.h"
 #include "string.h"
 #include "system_timetick.h"
+#include "jsmn.h"
 
 /* Public variables ----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
@@ -42,8 +43,10 @@
 uint8_t ui8STMRxBuff[STM_RXBUFF_SIZE]= {0};
 
 /* Private function prototypes -----------------------------------------------*/
-void Gimbal_Receiver_Init(void);
-void Gimbal_Sender_Init(void);
+static void Gimbal_Receiver_Init(void);
+static void Gimbal_Sender_Init(void);
+static void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame);
+static bool jsoneq(const char *json, jsmntok_t *tok, const char *s);
 
 /* Functions ---------------------------------------------------------*/
 /**
@@ -117,12 +120,57 @@ void Gimbal_Receiver_Init(void)
   DMA_Cmd(STM_RX_DMA_STREAM, ENABLE);
 }
 
+static bool jsoneq(const char *json, jsmntok_t *tok, const char *s)
+{
+  if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
+      strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
+    return true;
+  }
+  return false;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Gimbal_Receiver_Handler
+  * @note   Handle by jsonm
+  * @param  uint8_t *pui8STMFrame (pointer to frame need to handle)
+  * @retval none
+  */
+static void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
+{
+  int i;
+  int r;
+  jsmn_parser p;
+  jsmntok_t t[128]; /* We expect no more than 128 tokens */
+
+  jsmn_init(&p);
+  r = jsmn_parse(&p, (char *)pui8STMFrame, strlen((char *)pui8STMFrame), t, sizeof(t)/sizeof(t[0]));
+  if (r < 0) {
+    //printf("Failed to parse JSON: %d\n", r);
+    return;
+  }
+  /* Assume the top-level element is an object */
+  if (r < 1 || t[0].type != JSMN_OBJECT) {
+    //printf("Object expected\n");
+    return;
+  }
+  
+  if (jsoneq((char *)pui8STMFrame, &t[1], "test") == true)
+  {
+    if (jsoneq((char *)pui8STMFrame, &t[2], "ok") == true)
+    {
+      i++;
+    }
+  }
+  
+}
+
 /* Functions ---------------------------------------------------------*/
 /**
   * @brief  Gimbal_ADIS_Read
-  * @note   get raw IMU frame and call Gimbal_ADIS_Parse()
+  * @note   get raw STM frame and call Gimbal_Receiver_Handler()
   * @param  none
-  * @retval true if get correctly and vice versa
+  * @retval true if get correctly
   */
 bool Gimbal_PC_Read(void)
 {
@@ -196,9 +244,18 @@ bool Gimbal_PC_Read(void)
     return false;
   }
   pui8STMRxBuffPre = pui8EndChr;
+  Gimbal_Receiver_Handler(ui8STMFrame);
   return true;
 }
 
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Gimbal_ADIS_Read_Timeout
+  * @note   get raw STM frame and call Gimbal_Receiver_Handler
+            A message is correct if it is received in ui32TimeOut_ms
+  * @param  uint32_t ui32TimeOut_ms
+  * @retval true if get correctly and vice versa
+  */
 bool Gimbal_PC_Read_Timeout(uint32_t ui32TimeOut_ms)
 {
   static uint8_t *pui8STMRxBuffCur = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1];
@@ -290,6 +347,7 @@ bool Gimbal_PC_Read_Timeout(uint32_t ui32TimeOut_ms)
   }
   bNewData = false;
   pui8STMRxBuffPre = pui8EndChr;
+  Gimbal_Receiver_Handler(ui8STMFrame);
   return true;
 }
 
@@ -299,7 +357,7 @@ bool Gimbal_PC_Read_Timeout(uint32_t ui32TimeOut_ms)
   * @param  none
   * @retval none
   */
-void Gimbal_Sender_Init(void)
+static void Gimbal_Sender_Init(void)
 {
   
 }

@@ -411,11 +411,6 @@
               <FilePath>.\startup_stm32f40_41xxx.s</FilePath>
             </File>
             <File>
-              <FileName>main.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Src\main.c</FilePath>
-            </File>
-            <File>
               <FileName>system_stm32f4xx.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\system_stm32f4xx.c</FilePath>
@@ -424,6 +419,11 @@
               <FileName>system_timetick.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\system_timetick.c</FilePath>
+            </File>
+            <File>
+              <FileName>main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\main.c</FilePath>
             </File>
             <File>
               <FileName>gimbal_gpio.c</FileName>
@@ -451,9 +451,34 @@
               <FilePath>..\Src\gimbal_control.c</FilePath>
             </File>
             <File>
+              <FileName>gimbal_utils.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\gimbal_utils.c</FilePath>
+            </File>
+            <File>
               <FileName>gimbal_pc.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Src\gimbal_pc.c</FilePath>
+            </File>
+            <File>
+              <FileName>gimbal_params.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\gimbal_params.c</FilePath>
+            </File>
+            <File>
+              <FileName>jsmn.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\jsmn.c</FilePath>
+            </File>
+            <File>
+              <FileName>pid.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\pid.c</FilePath>
+            </File>
+            <File>
+              <FileName>eeprom_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Src\eeprom_i2c.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -499,6 +524,11 @@
               <FileName>stm32f4xx_usart.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_usart.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f4xx_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\STM32F4xx_StdPeriph_Driver\src\stm32f4xx_i2c.c</FilePath>
             </File>
           </Files>
         </Group>

@@ -8,5 +8,8 @@
 #include "gimbal_control.h"
 #include "gimbal_pc.h"
 #include "gimbal_utils.h"
+#include "gimbal_params.h"
+
+#include "eeprom_i2c.h"
 
 #include "stdbool.h"

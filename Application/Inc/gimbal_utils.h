@@ -22,12 +22,16 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "string.h"
+#include "stdbool.h"
+#include "stdint.h"
 
 /* Define --------------------------------------------------------------------*/
 /* Initialization and Configuration functions --------------------------------*/
 /* Functions -----------------------------------------------------------------*/
+void delay_us(uint32_t micros);
 void *memrchr(const void *str, int c, size_t n);
-   
+void IntToStrN(int32_t number, uint8_t *str, uint32_t n);
+
 #ifdef __cplusplus
 }
 #endif

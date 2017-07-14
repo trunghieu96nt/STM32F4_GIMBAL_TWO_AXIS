@@ -40,7 +40,7 @@
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 static uint8_t ui8IMURxBuff[IMU_RXBUFF_SIZE]= {0};
-IMUData_t imuData = {false}; //initial isAvailable value.
+STRU_IMU_DATA_T struIMUData = {false}; //initial isAvailable value.
 /* Private function prototypes -----------------------------------------------*/
 bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame);
 
@@ -157,7 +157,7 @@ bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
     pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
     if(pui8End == NULL) return false;
     *pui8End = 0;
-    *(&imuData.euler_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_EULER_UNIT;
+    *(&struIMUData.euler_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_EULER_UNIT;
     pui8Start = pui8End + 2;
   }
   //get gyro
@@ -166,7 +166,7 @@ bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
     pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
     if(pui8End == NULL) return false;
     *pui8End = 0;
-    *(&imuData.gyro_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_GYRO_UNIT;
+    *(&struIMUData.gyro_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_GYRO_UNIT;
     pui8Start = pui8End + 2;
   }
   //get mag
@@ -175,7 +175,7 @@ bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
     pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
     if(pui8End == NULL) return false;
     *pui8End = 0;
-    *(&imuData.mag_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_MAG_UNIT;
+    *(&struIMUData.mag_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_MAG_UNIT;
     pui8Start = pui8End + 2;
   }
   //get acc
@@ -184,14 +184,14 @@ bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
     pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
     if(pui8End == NULL) return false;
     *pui8End = 0;
-    *(&imuData.acc_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_ACC_UNIT;
+    *(&struIMUData.acc_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_ACC_UNIT;
     pui8Start = pui8End + 2;
   }
   //get gyro fog
   pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
   if(pui8End == NULL) return false;
   *pui8End = 0;
-  imuData.gyro_fog = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_FOG_UNIT;
+  struIMUData.gyro_fog = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_FOG_UNIT;
   return true;
 }
 
@@ -284,14 +284,14 @@ bool Gimbal_ADIS_Read_IsTimeout(uint32_t ui32TimeOut_ms)
   {
     if(SysTick_IsTimeout(ui32ReadDoneTime, ui32TimeOut_ms) == true)
     {
-        imuData.isAvailable = false;
+        struIMUData.isAvailable = false;
         return true;
     }
   }
   else
   {
     ui32ReadDoneTime = SysTick_GetTick();
-    imuData.isAvailable = true;
+    struIMUData.isAvailable = true;
   }
   return false;
 }

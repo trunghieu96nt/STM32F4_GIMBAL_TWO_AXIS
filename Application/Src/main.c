@@ -1,16 +1,8 @@
 #include "include.h"
 
-extern IMUData_t imuData;
+extern STRU_IMU_DATA_T struIMUData;
 
-void delay_us(uint32_t micros)
-{
-  RCC_ClocksTypeDef RCC_Clocks;
-  /* Get system clocks */
-  RCC_GetClocksFreq(&RCC_Clocks);
-  micros = micros * (RCC_Clocks.HCLK_Frequency / 4000000) - 10;
-  /* 4 cycles for one loop */
-  while (micros--);
-}
+
 
 void Board_Init()
 {
@@ -23,9 +15,12 @@ void Board_Init()
   Gimbal_ADIS_Init();
   Gimbal_PC_Init();
   
+  EEP_Init();
+  Gimbal_Params_Load_All();
+  
   delay_us(1000000);
-  //waiting for imuData is available
-//  while(imuData.isAvailable == false)
+  //waiting for struIMUData is available
+//  while(struIMUData.isAvailable == false)
 //  {
 //    Gimbal_ADIS_Read_IsTimeout(100);
 //    if(sysTickCount > 250)
@@ -45,7 +40,7 @@ int main(void)
   {
     Gimbal_PC_Read_Timeout(100);
     Gimbal_ADIS_Read_IsTimeout(100);
-    if(imuData.isAvailable == false)
+    if(struIMUData.isAvailable == false)
     {
       if((sysTickCount % 500) < 250)
         Gimbal_Led_Set(LED2_PIN);

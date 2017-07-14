@@ -17,13 +17,13 @@
 #define __GIMBAL_ENC_H
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
 #include "stdint.h"
-   
-   
+
+
 /* Define --------------------------------------------------------------------*/
 #define ENC0_TIM_POS                    TIM1 
 #define ENC0_TIM_CLK_POS                RCC_APB2Periph_TIM1

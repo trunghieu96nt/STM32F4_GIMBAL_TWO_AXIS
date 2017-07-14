@@ -86,7 +86,7 @@ typedef struct
   double acc_y;
   double acc_z;
   double gyro_fog;
-} IMUData_t;
+} STRU_IMU_DATA_T;
 
 /* Initialization and Configuration functions --------------------------------*/
 void Gimbal_ADIS_Init(void);

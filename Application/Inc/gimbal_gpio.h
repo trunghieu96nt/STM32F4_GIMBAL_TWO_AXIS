@@ -17,11 +17,12 @@
 #define __GIMBAL_GPIO_H
 
 #ifdef __cplusplus
- extern "C" {
+extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
 #include "stdint.h"
+
 /* typedef -------------------------------------------------------------------*/
 typedef void (*PulseHandle_t)(void);
 
