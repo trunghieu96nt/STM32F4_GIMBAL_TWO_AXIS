@@ -26,7 +26,10 @@ extern "C" {
 /* Struct --------------------------------------------------------------------*/
 /* Initialization and Configuration functions --------------------------------*/
 /* Functions -----------------------------------------------------------------*/
+void Gimbal_Control_Init(void);
 void Gimbal_Control_Home(void);
+void Gimbal_Control(void);
+
 #ifdef __cplusplus
 }
 #endif

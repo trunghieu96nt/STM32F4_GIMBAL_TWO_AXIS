@@ -293,17 +293,17 @@ void Gimbal_PWM1_Set_Duty(int16_t d)
   }
   else if (d > 0)
   {
-#if PWM1_USE_EN_PIN		
+#if PWM1_USE_EN_PIN
     PWM1_EN_PORT->BSRRL = PWM1_EN; // enable
-#endif		
-    PWM1_DIR_PORT->BSRRL = PWM1_DIR; //1, forward
+#endif
+    PWM1_DIR_PORT->BSRRH = PWM1_DIR; //1, forward
   }
   else // (d<0)
   {
-#if PWM1_USE_EN_PIN		
+#if PWM1_USE_EN_PIN
     PWM1_EN_PORT->BSRRL = PWM1_EN; // enable
-#endif		
-    PWM1_DIR_PORT->BSRRH = PWM1_DIR; //0,  backward
+#endif
+    PWM1_DIR_PORT->BSRRL = PWM1_DIR; //0,  backward
     d = -d;
   }
   d = ((PWM1_TIM->ARR + 1) * d + 500) / 1000;

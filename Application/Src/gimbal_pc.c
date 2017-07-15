@@ -36,7 +36,13 @@
 #include "system_timetick.h"
 #include "jsmn.h"
 
+#include "stdlib.h"
+#include "pid.h"
+
 /* Public variables ----------------------------------------------------------*/
+extern STRU_PID_T struPIDManual;
+float setpointPIDManual;
+
 /* Private define ------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
@@ -142,6 +148,7 @@ static void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
   int r;
   jsmn_parser p;
   jsmntok_t t[128]; /* We expect no more than 128 tokens */
+  uint8_t ui8HandleBuff[20];
 
   jsmn_init(&p);
   r = jsmn_parse(&p, (char *)pui8STMFrame, strlen((char *)pui8STMFrame), t, sizeof(t)/sizeof(t[0]));
@@ -155,14 +162,40 @@ static void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
     return;
   }
   
-  if (jsoneq((char *)pui8STMFrame, &t[1], "test") == true)
+  /* Handle data */
+  /* Loop over all keys of the root object */
+  for (i = 1; i < r; i++)
   {
-    if (jsoneq((char *)pui8STMFrame, &t[2], "ok") == true)
+    if(jsoneq((char *)pui8STMFrame, &t[i], "Kp") == true)
     {
+      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
+      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
+      PID_Kp_Set(&struPIDManual, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      i++;
+    }
+    else if (jsoneq((char *)pui8STMFrame, &t[i], "Ki") == true)
+    {
+      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
+      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
+      PID_Ki_Set(&struPIDManual, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      i++;
+    }
+    else if (jsoneq((char *)pui8STMFrame, &t[i], "Kd") == true)
+    {
+      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
+      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
+      PID_Kd_Set(&struPIDManual, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      i++;
+    }
+    else if (jsoneq((char *)pui8STMFrame, &t[i], "SetPoint") == true)
+    {
+      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
+      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
+      setpointPIDManual = (float)atoi((char *)ui8HandleBuff);
+      //PID_SetPoint_Set(&struPIDManual, (float)atoi((char *)ui8HandleBuff), 0);
       i++;
     }
   }
-  
 }
 
 /* Functions ---------------------------------------------------------*/
