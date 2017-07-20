@@ -1,9 +1,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "system_timetick.h"
 
-uint32_t tick_count = 0; // for system
-uint32_t sysTickCount = 0; // for user
-uint32_t tick_flag = 0;
+volatile uint32_t tick_count = 0; // for system
+volatile uint32_t sysTickCount = 0; // for user
+volatile uint32_t tick_flag = 0;
 
 
 void NMI_Handler(void)

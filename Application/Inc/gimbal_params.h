@@ -24,22 +24,13 @@
 #include "stdint.h"
 #include "stdbool.h"
 /* Define --------------------------------------------------------------------*/
-
+#define NUM_PARAMS_MAX 20
 /* Struct --------------------------------------------------------------------*/
 typedef enum{
   CODE_VERSION = 0,
-  KP_POS_AZ,
-  KI_POS_AZ,
-  KD_POS_AZ,
-  KP_POS_EL,
-  KI_POS_EL,
-  KD_POS_EL,
-  KP_VEL_Z,
-  KI_VEL_Z,
-  KD_VEL_Z,
-  KP_VEL_Y,
-  KI_VEL_Y,
-  KD_VEL_Y,
+  PARAMS_PID_AZ_MANUAL_POS_OUTER,
+  PARAMS_PID_EL_MANUAL_POS_OUTER,
+  PARAMS_PID_EL_MANUAL_VEL_INNER
 } ENUM_PARAMS_T;
 
 /* Union ---------------------------------------------------------------------*/
@@ -52,10 +43,8 @@ typedef union {
 /* Functions -----------------------------------------------------------------*/
 void Gimbal_Params_Load_All(void);
 void Gimbal_Params_Save_All(void);
-bool Gimbal_Params_Save_Word(ENUM_PARAMS_T enumParams, uint8_t *pui8Data);
-bool Gimbal_Params_Save_Float(ENUM_PARAMS_T enumParams, float fValue);
-bool Gimbal_Params_Load_Float(ENUM_PARAMS_T enumParams, float *pfValue);
-bool Gimbal_Params_Load_Word(ENUM_PARAMS_T enumParams, uint8_t *pui8Data);
+bool Gimbal_Params_Save(ENUM_PARAMS_T enumParams, const uint8_t *pu8Data);
+bool Gimbal_Params_Load(ENUM_PARAMS_T enumParams, uint8_t *pu8Data);
 
 #ifdef __cplusplus
 }

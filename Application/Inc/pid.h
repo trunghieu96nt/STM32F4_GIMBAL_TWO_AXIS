@@ -22,37 +22,52 @@ extern "C" {
 
 /* Includes ------------------------------------------------------------------*/
 #include "stdbool.h"
+#include "stdint.h"
+
 /* Define --------------------------------------------------------------------*/
 #define PID_METHOD_2
+#define PID_DEFAULT_SYSTEM_TS             0.001f
+#define PID_DEFAULT_D_PART_ALPHA          0.1f
+#define PID_DEFAULT_MAX_RESPONSE          900
 /* Struct --------------------------------------------------------------------*/
 typedef struct
 {
-  float SetPoint;
-  float MaxSetPointStep;
-  float DeadBand;
-  float e;
-  float e_;
-  float e__;
+  //save to eeprom -> size: sizeof(float) * NumOfFloatVariable
   float Kp;
   float Ki;
   float Kd;
+  
+  //considerate of saving to eeprom
+  uint8_t UseSetPointRamp; //easy to save
+  float MaxSetPointStep;
+  float DeadBand;
+  float dPartAlpha; //for filtering
+  float Ts;
+  float MaxResponse;
+  
+  //no need to save to eeprom
+  float SetPoint;
+  float SetPointBuff;
+  float e;
+  float e_;
+  float e__;
   float pPart;
   float iPart;
   float dPart;
   float dPartRaw;
-  float dPartAlpha; //for filtering
-  float Ts;
   float Result;
-  float MaxResponse;
-  
 } STRU_PID_T;
 /* Initialization and Configuration functions --------------------------------*/
 void PID_Init(STRU_PID_T *pidName);
 
 /* Functions -----------------------------------------------------------------*/
 float PID_Calc(STRU_PID_T *pidName, float fFeedback);
+void PID_Reset(STRU_PID_T *pidName);
 
-void PID_SetPoint_Set(STRU_PID_T *pidName, float fSetPoint, bool bUseRamp);
+void PID_UseSetPointRamp_Set(STRU_PID_T *pidName, uint8_t ui8UseSetPointRamp);
+uint8_t PID_UseSetPointRamp_Get(STRU_PID_T *pidName);
+
+void PID_SetPoint_Set(STRU_PID_T *pidName, float fSetPoint);
 float PID_SetPoint_Get(STRU_PID_T *pidName);
 
 void PID_MaxSetPointStep_Set(STRU_PID_T *pidName, float fMaxSetPointStep);

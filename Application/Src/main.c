@@ -18,20 +18,20 @@ void Board_Init()
   
   EEP_Init();
   Gimbal_Params_Load_All();
-  
-  delay_us(1000000);
+
   //waiting for struIMUData is available
   while(struIMUData.isAvailable == false)
   {
     Gimbal_ADIS_Read_IsTimeout(100);
+    
     if(sysTickCount > 250)
     {
       sysTickCount = 0;
       Gimbal_Led_Toggle(LED2_PIN);
     }
   }
-  //Gimbal_PWM1_Set_Duty(-70);
-  Gimbal_Control_Home();
+  delay_us(500000);
+  Gimbal_Sender_Send((uint8_t *)"{\"Status\": \"Ok\"}", strlen("{\"Status\": \"Ok\"}"));
 }
 
 int main(void)
@@ -40,7 +40,10 @@ int main(void)
     
   while(true)
   {
+    //Command from PC
     Gimbal_PC_Read_Timeout(100);
+    
+    //Read ADIS data
     Gimbal_ADIS_Read_IsTimeout(100);
     if(struIMUData.isAvailable == false)
     {
@@ -51,11 +54,15 @@ int main(void)
     }
     else
       Gimbal_Led_Reset(LED2_PIN);
+    
+    //LED Sys Status
     if(sysTickCount > 1000)
     {
       sysTickCount = 0;
       Gimbal_Led_Toggle(LED1_PIN);
     }
+    
+    //Controller
     if(tick_flag == true)
     {
       tick_flag = false;

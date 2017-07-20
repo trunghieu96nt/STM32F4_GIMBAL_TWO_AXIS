@@ -37,17 +37,20 @@
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 /* Private function prototypes -----------------------------------------------*/
+bool I2C_ReadBytes(I2C_TypeDef* I2Cx, uint8_t *pu8Buff, uint8_t ui8SlaveAdd, uint8_t ui8RegAdd, uint8_t ui8Len);
+bool I2C_WriteBytes(I2C_TypeDef * I2Cx, const uint8_t *pu8Buff, uint8_t ui8SlaveAdd, uint8_t ui8RegAdd, uint8_t ui8Len);
+
 /* Functions ---------------------------------------------------------*/
 /**
   * @brief  I2C_ReadBytes
   * @note   ...
-  * @param  pui8Buff: pointer to array that will store bytes from slave
+  * @param  pu8Buff: pointer to array that will store bytes from slave
   * @param  ui8SlaveAdd: slave's address
   * @param  ui8RegAdd: start address of the register of the slave
   * @param  ui8Len: length of the array
   * @retval true if succeed and vice versa
   */
-bool I2C_ReadBytes(I2C_TypeDef* I2Cx, uint8_t *pui8Buff, uint8_t ui8SlaveAdd, uint8_t ui8RegAdd, uint8_t ui8Len)
+bool I2C_ReadBytes(I2C_TypeDef* I2Cx, uint8_t *pu8Buff, uint8_t ui8SlaveAdd, uint8_t ui8RegAdd, uint8_t ui8Len)
 {
   uint32_t ui32Time;
 
@@ -134,8 +137,8 @@ bool I2C_ReadBytes(I2C_TypeDef* I2Cx, uint8_t *pui8Buff, uint8_t ui8SlaveAdd, ui
 
     /* Read the byte received from the Sensor */
     /* Point to the next location where the byte read will be saved */
-    *pui8Buff = I2C_ReceiveData(I2Cx);
-    pui8Buff++;
+    *pu8Buff = I2C_ReceiveData(I2Cx);
+    pu8Buff++;
     
     /* Decrease the read bytes counter */
     ui8Len--;
@@ -159,13 +162,13 @@ bool I2C_ReadBytes(I2C_TypeDef* I2Cx, uint8_t *pui8Buff, uint8_t ui8SlaveAdd, ui
 /**
   * @brief  I2C_WriteBytes
   * @note   ...
-  * @param  pui8Buff: pointer to array that will store bytes from slave
+  * @param  pu8Buff: pointer to array that will store bytes from slave
   * @param  ui8SlaveAdd: slave's address
   * @param  ui8RegAdd: start address of the register of the slave
   * @param  ui8len: length of the array
   * @retval true if succeed and vice versa
   */
-bool I2C_WriteBytes(I2C_TypeDef * I2Cx, uint8_t *pui8Buff, uint8_t ui8SlaveAdd, uint8_t ui8RegAdd, uint8_t ui8Len)
+bool I2C_WriteBytes(I2C_TypeDef * I2Cx, const uint8_t *pu8Buff, uint8_t ui8SlaveAdd, uint8_t ui8RegAdd, uint8_t ui8Len)
 {
   uint32_t ui32Time;
   I2C_AcknowledgeConfig(I2Cx, ENABLE); 
@@ -211,8 +214,8 @@ bool I2C_WriteBytes(I2C_TypeDef * I2Cx, uint8_t *pui8Buff, uint8_t ui8SlaveAdd, 
   while(ui8Len)
   {
     /* Send the data & increase the pointer of write buffer */
-    I2C_SendData(I2Cx, *pui8Buff); 
-    pui8Buff++;
+    I2C_SendData(I2Cx, *pu8Buff); 
+    pu8Buff++;
     ui8Len--;  
     /* Test on EV8_2 to ensure data is transmitted, can used EV_8 for faster transmission*/
     ui32Time = I2C_TIMEOUT;
@@ -266,14 +269,14 @@ void EEP_Init(void)
 /**
   * @brief  EEP_ReadBytes
   * @note   ...
-  * @param  pui8Buff: pointer to array that will store bytes from EEP
+  * @param  pu8Buff: pointer to array that will store bytes from EEP
   * @param  ui16RegAdd: start regiter address from 0 to 511 
   *         (EEPROM 24C04: 512 bytes/address)
   *         And it is divided into 2 pages (256 bytes/page)
   * @param  ui16Len: length of data to read
   * @retval true if succeed and vice versa
   */
-bool EEP_ReadBytes(uint8_t* pui8Buff, uint16_t ui16RegAdd, uint16_t ui16Len)
+bool EEP_ReadBytes(uint8_t* pu8Buff, uint16_t ui16RegAdd, uint16_t ui16Len)
 {
   uint16_t ui16RegAddBuff;
   uint8_t ui8EEPAddBuff;
@@ -296,11 +299,11 @@ bool EEP_ReadBytes(uint8_t* pui8Buff, uint16_t ui16RegAdd, uint16_t ui16Len)
     */
       
     /* Random read 1 byte */
-    if(I2C_ReadBytes(EEP_I2C, pui8Buff, ui8EEPAddBuff, ui16RegAddBuff, 1) == false) 
+    if(I2C_ReadBytes(EEP_I2C, pu8Buff, ui8EEPAddBuff, ui16RegAddBuff, 1) == false) 
     {
       return false;
     }
-    pui8Buff++;
+    pu8Buff++;
   }
   return true;
 }
@@ -308,14 +311,14 @@ bool EEP_ReadBytes(uint8_t* pui8Buff, uint16_t ui16RegAdd, uint16_t ui16Len)
 /**
   * @brief  EEP_WriteBytes
   * @note   ...
-  * @param  pui8Buff: pointer to write array data
+  * @param  pu8Buff: pointer to write array data
   * @param  ui16RegAdd: start regiter address from 0 to 511 
   *         (EEPROM 24C04: 512 bytes/address)
   *         And it is divided into 2 pages (256 bytes/page)
   * @param  ui16Len: length of data to write
   * @retval true if succeed and vice versa
   */
-bool EEP_WriteBytes(uint8_t* pui8Buff, uint16_t ui16RegAdd, uint16_t ui16Len)
+bool EEP_WriteBytes(const uint8_t* pu8Buff, uint16_t ui16RegAdd, uint16_t ui16Len)
 {
   uint16_t ui16RegAddBuff;
   uint8_t ui8EEPAddBuff;
@@ -338,11 +341,11 @@ bool EEP_WriteBytes(uint8_t* pui8Buff, uint16_t ui16RegAdd, uint16_t ui16Len)
     */
 
     // Random write 1 byte into eeprom
-    if (I2C_WriteBytes(EEP_I2C, pui8Buff, ui8EEPAddBuff, ui16RegAddBuff, 1) == false)
+    if (I2C_WriteBytes(EEP_I2C, pu8Buff, ui8EEPAddBuff, ui16RegAddBuff, 1) == false)
     {
       return false;
     }
-    pui8Buff++;
+    pu8Buff++;
     delay_us(5000); //Important: Maximum write cycle time = 5ms
   }
   return true;

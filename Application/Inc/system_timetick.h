@@ -22,9 +22,9 @@
 
 #define F_CTRL (float)1000
 
-extern uint32_t tick_count;
-extern uint32_t sysTickCount;
-extern uint32_t tick_flag;
+extern volatile uint32_t tick_count;
+extern volatile uint32_t sysTickCount;
+extern volatile uint32_t tick_flag;
 
 
 void NMI_Handler(void);

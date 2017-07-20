@@ -38,14 +38,16 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Functions ---------------------------------------------------------*/
 /**
-  * @brief  ...
-  * @note   ...
-  * @param  none
+  * @brief  Init PID
+  * @note   Some params is set to default
+  * @param  STRU_PID_T *pidName
   * @retval none
   */
 void PID_Init(STRU_PID_T *pidName)
 {
+  pidName->UseSetPointRamp = 0;
   pidName->SetPoint        = 0.0f;
+  pidName->SetPointBuff    = 0.0f;
   pidName->MaxSetPointStep = 0.0f;
   pidName->DeadBand        = 0.0f;
   pidName->e               = 0.0f;
@@ -58,17 +60,34 @@ void PID_Init(STRU_PID_T *pidName)
   pidName->iPart           = 0.0f;
   pidName->dPart           = 0.0f;
   pidName->dPartRaw        = 0.0f;
-  pidName->dPartAlpha      = 0.0f;
-  pidName->Ts              = 0.0f;
+  pidName->dPartAlpha      = PID_DEFAULT_D_PART_ALPHA;
+  pidName->Ts              = PID_DEFAULT_SYSTEM_TS;
   pidName->Result          = 0.0f;
-  pidName->MaxResponse     = 0.0f;
+  pidName->MaxResponse     = PID_DEFAULT_MAX_RESPONSE;
 
 }
 
+/**
+  * @brief  Calculate PID
+  * @note   ...
+  * @param  STRU_PID_T *pidName
+  * @param  float fFeedback
+  * @retval pidName->Result
+  */
 float PID_Calc(STRU_PID_T *pidName, float fFeedback)
 {
 #ifdef PID_METHOD_1
   float ke, ke_, ke__;
+  
+  if(pidName->UseSetPointRamp != 0) //true
+  {
+    if(pidName->SetPointBuff > (pidName->SetPoint + pidName->MaxSetPointStep))
+      pidName->SetPoint += pidName->MaxSetPointStep;
+    else if (pidName->SetPointBuff < (pidName->SetPoint - pidName->MaxSetPointStep))
+      pidName->SetPoint -= pidName->MaxSetPointStep;
+    else
+      pidName->SetPoint = pidName->SetPointBuff;
+  }
   
   pidName->e = pidName->SetPoint - fFeedback;
   if(fabsf(pidName->e) < pidName->DeadBand) pidName->e = 0;
@@ -91,6 +110,16 @@ float PID_Calc(STRU_PID_T *pidName, float fFeedback)
 #endif
 
 #ifdef PID_METHOD_2
+  if(pidName->UseSetPointRamp != 0) //true
+  {
+    if(pidName->SetPointBuff > (pidName->SetPoint + pidName->MaxSetPointStep))
+      pidName->SetPoint += pidName->MaxSetPointStep;
+    else if (pidName->SetPointBuff < (pidName->SetPoint - pidName->MaxSetPointStep))
+      pidName->SetPoint -= pidName->MaxSetPointStep;
+    else
+      pidName->SetPoint = pidName->SetPointBuff;
+  }
+  
   pidName->e = pidName->SetPoint - fFeedback;
   if(fabsf(pidName->e) < pidName->DeadBand) pidName->e = 0;
   
@@ -99,7 +128,7 @@ float PID_Calc(STRU_PID_T *pidName, float fFeedback)
   
   //iPart
   pidName->iPart += pidName->Ki * (pidName->e + pidName->e_) / 2;
-  if (pidName->iPart > pidName->MaxResponse) 
+  if (pidName->iPart > pidName->MaxResponse)
     pidName->iPart = pidName->MaxResponse;
   else if (pidName->iPart < -pidName->MaxResponse) 
     pidName->iPart = -pidName->MaxResponse;
@@ -121,21 +150,54 @@ float PID_Calc(STRU_PID_T *pidName, float fFeedback)
 }
 
 /**
-  * @brief  ...
+  * @brief  Reset PID
   * @note   ...
-  * @param  none
+  * @param  STRU_PID_T *pidName
   * @retval none
   */
-void PID_SetPoint_Set(STRU_PID_T *pidName, float fSetPoint, bool bUseRamp)
+void PID_Reset(STRU_PID_T *pidName)
 {
-  if(bUseRamp == true)
+  pidName->e        = 0.0f;
+  pidName->e_       = 0.0f;
+  pidName->e__      = 0.0f;
+  pidName->pPart    = 0.0f;
+  pidName->iPart    = 0.0f;
+  pidName->dPart    = 0.0f;
+  pidName->dPartRaw = 0.0f;
+  pidName->Result   = 0.0f;
+}
+
+/**
+  * @brief  Set UseSetPointRamp (Get UseSetPointRamp)
+  * @note   ...
+  * @param  STRU_PID_T *pidName
+  * @param  uint8_t ui8UseSetPointRamp
+  * @retval none (pidName->SetPoint)
+  */
+void PID_UseSetPointRamp_Set(STRU_PID_T *pidName, uint8_t ui8UseSetPointRamp)
+{
+  pidName->UseSetPointRamp = ui8UseSetPointRamp;
+}
+
+uint8_t PID_UseSetPointRamp_Get(STRU_PID_T *pidName)
+{
+  return pidName->UseSetPointRamp;
+}
+
+/**
+  * @brief  Set setpoint (Get setpoint)
+  * @note   ...
+  * @param  STRU_PID_T *pidName
+  * @param  float fSetPoint
+  * @param  bool bUseRamp -> if true this function must call before when call PID_Calc
+            this limit the accelerometer
+  * @retval none (pidName->SetPoint)
+  */
+void PID_SetPoint_Set(STRU_PID_T *pidName, float fSetPoint)
+{
+  if(pidName->UseSetPointRamp != 0) //true
   {
-    if(fSetPoint > (pidName->SetPoint + pidName->MaxSetPointStep))
-      pidName->SetPoint += pidName->MaxSetPointStep;
-    else if (fSetPoint < (pidName->SetPoint - pidName->MaxSetPointStep))
-      pidName->SetPoint -= pidName->MaxSetPointStep;
-    else
-      pidName->SetPoint = fSetPoint;
+    pidName->SetPointBuff = fSetPoint;
   }
   else
     pidName->SetPoint = fSetPoint;
@@ -147,10 +209,11 @@ float PID_SetPoint_Get(STRU_PID_T *pidName)
 }
 
 /**
-  * @brief  ...
-  * @note   ...
-  * @param  none
-  * @retval none
+  * @brief  Set MaxSetPointStep (get)
+  * @note   This is only work if bUseRamp == true when call PID_SetPoint_Set
+  * @param  STRU_PID_T *pidName
+  * @param  float fMaxSetPointStep
+  * @retval none (pidName->MaxSetPointStep)
   */
 void PID_MaxSetPointStep_Set(STRU_PID_T *pidName, float fMaxSetPointStep)
 {
@@ -163,10 +226,11 @@ float PID_MaxSetPointStep_Get(STRU_PID_T *pidName)
 }
 
 /**
-  * @brief  ...
-  * @note   ...
-  * @param  none
-  * @retval none
+  * @brief  Set DeadBand (Get)
+  * @note   Dead band of e
+  * @param  STRU_PID_T *pidName
+  * @param  float fDeadBand
+  * @retval pidName->DeadBand
   */
 void PID_DeadBand_Set(STRU_PID_T *pidName, float fDeadBand)
 {
@@ -179,10 +243,11 @@ float PID_DeadBand_Get(STRU_PID_T *pidName)
 }
 
 /**
-  * @brief  ...
+  * @brief  Set Kp Ki Kd (Get)
   * @note   ...
-  * @param  none
-  * @retval none
+  * @param  STRU_PID_T *pidName
+  * @param  float fKx (x = p i d)
+  * @retval none (pidName->Kx = fKx (x = p i d))
   */
 void PID_Kp_Set(STRU_PID_T *pidName, float fKp)
 {
@@ -215,10 +280,11 @@ float PID_Kd_Get(STRU_PID_T *pidName)
 }
 
 /**
-  * @brief  ...
-  * @note   ...
-  * @param  none
-  * @retval none
+  * @brief  Set d part alpha (get)
+  * @note   This is low filter for dPart
+  * @param  STRU_PID_T *pidName
+  * @param  float fdPartAlpha
+  * @retval none (pidName->dPartAlpha)
   */
 void PID_dPartAlpha_Set(STRU_PID_T *pidName, float fdPartAlpha)
 {
@@ -231,10 +297,11 @@ float PID_dPartAlpha_Get(STRU_PID_T *pidName)
 }
 
 /**
-  * @brief  ...
+  * @brief  Set Ts (Get)
   * @note   ...
-  * @param  none
-  * @retval none
+  * @param  STRU_PID_T *pidName
+  * @param  float fTs
+  * @retval none (pidName->Ts)
   */
 void PID_Ts_Set(STRU_PID_T *pidName, float fTs)
 {
@@ -247,10 +314,11 @@ float PID_Ts_Get(STRU_PID_T *pidName)
 }
 
 /**
-  * @brief  ...
-  * @note   ...
-  * @param  none
-  * @retval none
+  * @brief  Set Max Response (Get)
+  * @note   Limit the pidName->Result
+  * @param  STRU_PID_T *pidName
+  * @param  float fMaxResponse
+  * @retval none (pidName->MaxResponse)
   */
 void PID_MaxResponse_Set(STRU_PID_T *pidName, float fMaxResponse)
 {

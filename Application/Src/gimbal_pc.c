@@ -38,21 +38,24 @@
 
 #include "stdlib.h"
 #include "pid.h"
+#include "gimbal_params.h"
 
 /* Public variables ----------------------------------------------------------*/
-extern STRU_PID_T struPIDManual;
-float setpointPIDManual;
+extern STRU_PID_T stru_PID_AZ_Manual_Pos_Outer;
 
+extern STRU_PID_T stru_PID_EL_Manual_Pos_Outer;
+extern STRU_PID_T stru_PID_EL_Manual_Vel_Inner;
 /* Private define ------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
-uint8_t ui8STMRxBuff[STM_RXBUFF_SIZE]= {0};
+uint8_t au8STMRxBuff[STM_RXBUFF_SIZE]= {0};
+uint8_t au8HMITxBuff[HMI_RXBUFF_SIZE]= {0};
 
 /* Private function prototypes -----------------------------------------------*/
-static void Gimbal_Receiver_Init(void);
-static void Gimbal_Sender_Init(void);
-static void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame);
-static bool jsoneq(const char *json, jsmntok_t *tok, const char *s);
+void Gimbal_Receiver_Init(void);
+void Gimbal_Sender_Init(void);
+void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame);
+bool jsoneq(const char *json, jsmntok_t *tok, const char *s);
 
 /* Functions ---------------------------------------------------------*/
 /**
@@ -106,7 +109,7 @@ void Gimbal_Receiver_Init(void)
   DMA_DeInit(STM_RX_DMA_STREAM);  
   DMA_InitStructure.DMA_Channel            = STM_RX_DMA_CHANNEL;
   DMA_InitStructure.DMA_DIR                = DMA_DIR_PeripheralToMemory;
-  DMA_InitStructure.DMA_Memory0BaseAddr    = (uint32_t)&ui8STMRxBuff[0];
+  DMA_InitStructure.DMA_Memory0BaseAddr    = (uint32_t)&au8STMRxBuff[0];
   DMA_InitStructure.DMA_PeripheralBaseAddr = STM_DATA_REG;
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
   DMA_InitStructure.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
@@ -126,7 +129,7 @@ void Gimbal_Receiver_Init(void)
   DMA_Cmd(STM_RX_DMA_STREAM, ENABLE);
 }
 
-static bool jsoneq(const char *json, jsmntok_t *tok, const char *s)
+bool jsoneq(const char *json, jsmntok_t *tok, const char *s)
 {
   if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
       strncmp(json + tok->start, s, tok->end - tok->start) == 0) {
@@ -142,9 +145,8 @@ static bool jsoneq(const char *json, jsmntok_t *tok, const char *s)
   * @param  uint8_t *pui8STMFrame (pointer to frame need to handle)
   * @retval none
   */
-static void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
+void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
 {
-  int i;
   int r;
   jsmn_parser p;
   jsmntok_t t[128]; /* We expect no more than 128 tokens */
@@ -163,39 +165,101 @@ static void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
   }
   
   /* Handle data */
-  /* Loop over all keys of the root object */
-  for (i = 1; i < r; i++)
+  if(jsoneq((char *)pui8STMFrame, &t[2], "PIDTunner") == true)
   {
-    if(jsoneq((char *)pui8STMFrame, &t[i], "Kp") == true)
+    if(jsoneq((char *)pui8STMFrame, &t[4], "AZ_MANUAL_POS_OUTER") == true)
     {
-      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
-      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
-      PID_Kp_Set(&struPIDManual, (float)atoi((char *)ui8HandleBuff) * 0.001f);
-      i++;
+      if(jsoneq((char *)pui8STMFrame, &t[5], "Save") == true)
+      {
+        Gimbal_Params_Save(PARAMS_PID_AZ_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_AZ_Manual_Pos_Outer);
+      }
+      else
+      {
+        memcpy(ui8HandleBuff, pui8STMFrame + t[6].start, t[6].end - t[6].start);
+        ui8HandleBuff[t[6].end - t[6].start] = 0;
+        PID_Kp_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        
+        memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
+        ui8HandleBuff[t[8].end - t[8].start] = 0;
+        PID_Ki_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        
+        memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
+        ui8HandleBuff[t[10].end - t[10].start] = 0;
+        PID_Kd_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      }
     }
-    else if (jsoneq((char *)pui8STMFrame, &t[i], "Ki") == true)
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "EL_MANUAL_POS_OUTER") == true)
     {
-      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
-      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
-      PID_Ki_Set(&struPIDManual, (float)atoi((char *)ui8HandleBuff) * 0.001f);
-      i++;
+      memcpy(ui8HandleBuff, pui8STMFrame + t[6].start, t[6].end - t[6].start);
+      ui8HandleBuff[t[6].end - t[6].start] = 0;
+      PID_Kp_Set(&stru_PID_EL_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      
+      memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
+      ui8HandleBuff[t[8].end - t[8].start] = 0;
+      PID_Ki_Set(&stru_PID_EL_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      
+      memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
+      ui8HandleBuff[t[10].end - t[10].start] = 0;
+      PID_Kd_Set(&stru_PID_EL_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
     }
-    else if (jsoneq((char *)pui8STMFrame, &t[i], "Kd") == true)
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "EL_MANUAL_VEL_INNER") == true)
     {
-      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
-      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
-      PID_Kd_Set(&struPIDManual, (float)atoi((char *)ui8HandleBuff) * 0.001f);
-      i++;
-    }
-    else if (jsoneq((char *)pui8STMFrame, &t[i], "SetPoint") == true)
-    {
-      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
-      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
-      setpointPIDManual = (float)atoi((char *)ui8HandleBuff);
-      //PID_SetPoint_Set(&struPIDManual, (float)atoi((char *)ui8HandleBuff), 0);
-      i++;
+      memcpy(ui8HandleBuff, pui8STMFrame + t[6].start, t[6].end - t[6].start);
+      ui8HandleBuff[t[6].end - t[6].start] = 0;
+      PID_Kp_Set(&stru_PID_EL_Manual_Vel_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      
+      memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
+      ui8HandleBuff[t[8].end - t[8].start] = 0;
+      PID_Ki_Set(&stru_PID_EL_Manual_Vel_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      
+      memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
+      ui8HandleBuff[t[10].end - t[10].start] = 0;
+      PID_Kd_Set(&stru_PID_EL_Manual_Vel_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
     }
   }
+  else if(jsoneq((char *)pui8STMFrame, &t[2], "Control") == true)
+  {
+    if(jsoneq((char *)pui8STMFrame, &t[4], "Manual") == true)
+    {
+      if(jsoneq((char *)pui8STMFrame, &t[6], "Az") == true)
+      {
+        memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
+        ui8HandleBuff[t[8].end - t[8].start] = 0;
+        PID_MaxSetPointStep_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.1f * 0.001f);
+        
+        memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
+        ui8HandleBuff[t[10].end - t[10].start] = 0;
+        PID_SetPoint_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.1f);
+        
+        Gimbal_Sender_Send((uint8_t *)"{\"Status\": \"Ok\"}", strlen("{\"Status\": \"Ok\"}"));
+      }
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "El") == true)
+      {
+        memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
+        ui8HandleBuff[t[8].end - t[8].start] = 0;
+        PID_SetPoint_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      }
+    }
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "Pointing") == true)
+    {
+      
+    }
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "Tracking") == true)
+    {
+      
+    }
+  }
+  /* Loop over all keys of the root object */
+//  for (i = 1; i < r; i++)
+//  {
+//    if (jsoneq((char *)pui8STMFrame, &t[i], "SetPoint") == true)
+//    {
+//      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
+//      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
+//      PID_SetPoint_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff), false);
+//      i++;
+//    }
+//  }
 }
 
 /* Functions ---------------------------------------------------------*/
@@ -207,77 +271,77 @@ static void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
   */
 bool Gimbal_PC_Read(void)
 {
-  static uint8_t *pui8STMRxBuffCur = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1];
-  static uint8_t *pui8STMRxBuffPre = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1];
-  uint8_t *pui8EndChr = NULL, *pui8StartChr = NULL;
-  uint8_t ui8STMFrame[STM_FRAME_MAX_LEN];
+  static uint8_t *pu8STMRxBuffCur = &au8STMRxBuff[STM_RXBUFF_SIZE - 1];
+  static uint8_t *pu8STMRxBuffPre = &au8STMRxBuff[STM_RXBUFF_SIZE - 1];
+  uint8_t *pu8EndChr = NULL, *pu8StartChr = NULL;
+  uint8_t au8STMFrame[STM_FRAME_MAX_LEN];
   uint32_t ui32TotalLen = 0;
   
   if(STM_RX_DMA_STREAM->NDTR == STM_RXBUFF_SIZE)
-    pui8STMRxBuffCur = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1];
+    pu8STMRxBuffCur = &au8STMRxBuff[STM_RXBUFF_SIZE - 1];
   else
-    pui8STMRxBuffCur = &ui8STMRxBuff[STM_RXBUFF_SIZE - STM_RX_DMA_STREAM->NDTR - 1];
+    pu8STMRxBuffCur = &au8STMRxBuff[STM_RXBUFF_SIZE - STM_RX_DMA_STREAM->NDTR - 1];
   
-  if(pui8STMRxBuffCur > pui8STMRxBuffPre)
+  if(pu8STMRxBuffCur > pu8STMRxBuffPre)
   {
-    //search STM_END_FRAME backward from pui8STMRxBuffCur to pui8STMRxBuffPre
-    pui8EndChr = memrchr(pui8STMRxBuffCur, STM_END_FRAME,pui8STMRxBuffCur - pui8STMRxBuffPre + 1);
-    if(pui8EndChr == NULL) return false;
-    //search STM_START_FRAME backward from pui8EndChr to pui8STMRxBuffPre
-    pui8StartChr = memrchr(pui8EndChr, STM_START_FRAME,pui8EndChr - pui8STMRxBuffPre + 1);
-    if(pui8StartChr == NULL) return false;
-    ui32TotalLen = pui8EndChr - pui8StartChr + 1;
+    //search STM_END_FRAME backward from pu8STMRxBuffCur to pu8STMRxBuffPre
+    pu8EndChr = memrchr(pu8STMRxBuffCur, STM_END_FRAME,pu8STMRxBuffCur - pu8STMRxBuffPre + 1);
+    if(pu8EndChr == NULL) return false;
+    //search STM_START_FRAME backward from pu8EndChr to pu8STMRxBuffPre
+    pu8StartChr = memrchr(pu8EndChr, STM_START_FRAME,pu8EndChr - pu8STMRxBuffPre + 1);
+    if(pu8StartChr == NULL) return false;
+    ui32TotalLen = pu8EndChr - pu8StartChr + 1;
     if(ui32TotalLen > (STM_FRAME_MAX_LEN - 1)) return false;
-    memcpy(ui8STMFrame, pui8StartChr, ui32TotalLen);
-    ui8STMFrame[ui32TotalLen] = 0;
+    memcpy(au8STMFrame, pu8StartChr, ui32TotalLen);
+    au8STMFrame[ui32TotalLen] = 0;
   }
-  else if(pui8STMRxBuffCur < pui8STMRxBuffPre)
+  else if(pu8STMRxBuffCur < pu8STMRxBuffPre)
   {
-    //search STM_END_FRAME backward from pui8STMRxBuffCur to ui8STMRxBuff
-    pui8EndChr = memrchr(pui8STMRxBuffCur, STM_END_FRAME,pui8STMRxBuffCur - ui8STMRxBuff + 1);
-    if(pui8EndChr != NULL)
+    //search STM_END_FRAME backward from pu8STMRxBuffCur to au8STMRxBuff
+    pu8EndChr = memrchr(pu8STMRxBuffCur, STM_END_FRAME,pu8STMRxBuffCur - au8STMRxBuff + 1);
+    if(pu8EndChr != NULL)
     {
-      //search STM_START_FRAME backward from pui8EndChr to ui8STMRxBuff
-      pui8StartChr = memrchr(pui8EndChr, STM_START_FRAME,pui8EndChr - ui8STMRxBuff + 1);
-      if(pui8StartChr != NULL)
+      //search STM_START_FRAME backward from pu8EndChr to au8STMRxBuff
+      pu8StartChr = memrchr(pu8EndChr, STM_START_FRAME,pu8EndChr - au8STMRxBuff + 1);
+      if(pu8StartChr != NULL)
       {
-        ui32TotalLen = pui8EndChr - pui8StartChr + 1;
+        ui32TotalLen = pu8EndChr - pu8StartChr + 1;
         if(ui32TotalLen > (STM_FRAME_MAX_LEN - 1)) return false;
-        memcpy(ui8STMFrame, pui8StartChr, ui32TotalLen);
-        ui8STMFrame[ui32TotalLen] = 0;
+        memcpy(au8STMFrame, pu8StartChr, ui32TotalLen);
+        au8STMFrame[ui32TotalLen] = 0;
       }
       else
       {
-        //search STM_START_FRAME backward from &ui8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pui8STMRxBuffPre
-        pui8StartChr = memrchr(&ui8STMRxBuff[STM_RXBUFF_SIZE - 1], STM_START_FRAME,&ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8STMRxBuffPre + 1);
-        if(pui8StartChr == NULL) return false;
-        ui32TotalLen = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8StartChr + 1 + pui8EndChr - ui8STMRxBuff + 1;
+        //search STM_START_FRAME backward from &au8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pu8STMRxBuffPre
+        pu8StartChr = memrchr(&au8STMRxBuff[STM_RXBUFF_SIZE - 1], STM_START_FRAME,&au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8STMRxBuffPre + 1);
+        if(pu8StartChr == NULL) return false;
+        ui32TotalLen = &au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8StartChr + 1 + pu8EndChr - au8STMRxBuff + 1;
         if(ui32TotalLen > (STM_FRAME_MAX_LEN - 1)) return false;
-        memcpy(ui8STMFrame, pui8StartChr, &ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8StartChr + 1);
-        memcpy(&ui8STMFrame[&ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8StartChr + 1], ui8STMRxBuff, pui8EndChr - ui8STMRxBuff + 1);
-        ui8STMFrame[ui32TotalLen] = 0;
+        memcpy(au8STMFrame, pu8StartChr, &au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8StartChr + 1);
+        memcpy(&au8STMFrame[&au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8StartChr + 1], au8STMRxBuff, pu8EndChr - au8STMRxBuff + 1);
+        au8STMFrame[ui32TotalLen] = 0;
       }
     }
     else
     {
-      //search STM_END_FRAME backward from &ui8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pui8STMRxBuffPre
-      pui8EndChr = memrchr(&ui8STMRxBuff[STM_RXBUFF_SIZE - 1], STM_END_FRAME,&ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8STMRxBuffPre + 1);
-      if(pui8EndChr == NULL) return false;
-      //search STM_START_FRAME backward from pui8EndChr to pui8STMRxBuffPre
-      pui8StartChr = memrchr(pui8EndChr, STM_START_FRAME,pui8EndChr - pui8STMRxBuffPre + 1);
-      if(pui8StartChr == NULL) return false;
-      ui32TotalLen = pui8EndChr - pui8StartChr + 1;
+      //search STM_END_FRAME backward from &au8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pu8STMRxBuffPre
+      pu8EndChr = memrchr(&au8STMRxBuff[STM_RXBUFF_SIZE - 1], STM_END_FRAME,&au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8STMRxBuffPre + 1);
+      if(pu8EndChr == NULL) return false;
+      //search STM_START_FRAME backward from pu8EndChr to pu8STMRxBuffPre
+      pu8StartChr = memrchr(pu8EndChr, STM_START_FRAME,pu8EndChr - pu8STMRxBuffPre + 1);
+      if(pu8StartChr == NULL) return false;
+      ui32TotalLen = pu8EndChr - pu8StartChr + 1;
       if(ui32TotalLen > (STM_FRAME_MAX_LEN - 1)) return false;
-      memcpy(ui8STMFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
-      ui8STMFrame[pui8EndChr - pui8StartChr + 1] = 0;
+      memcpy(au8STMFrame, pu8StartChr, pu8EndChr - pu8StartChr + 1);
+      au8STMFrame[pu8EndChr - pu8StartChr + 1] = 0;
     }
   }
-  else //pui8STMRxBuffCur == pui8STMRxBuffPr
+  else //pu8STMRxBuffCur == pui8STMRxBuffPr
   {
     return false;
   }
-  pui8STMRxBuffPre = pui8EndChr;
-  Gimbal_Receiver_Handler(ui8STMFrame);
+  pu8STMRxBuffPre = pu8EndChr;
+  Gimbal_Receiver_Handler(au8STMFrame);
   return true;
 }
 
@@ -291,22 +355,22 @@ bool Gimbal_PC_Read(void)
   */
 bool Gimbal_PC_Read_Timeout(uint32_t ui32TimeOut_ms)
 {
-  static uint8_t *pui8STMRxBuffCur = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1];
-  static uint8_t *pui8STMRxBuffPre = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1];
-  uint8_t *pui8EndChr = NULL, *pui8StartChr = NULL;
-  uint8_t ui8STMFrame[STM_FRAME_MAX_LEN];
+  static uint8_t *pu8STMRxBuffCur = &au8STMRxBuff[STM_RXBUFF_SIZE - 1];
+  static uint8_t *pu8STMRxBuffPre = &au8STMRxBuff[STM_RXBUFF_SIZE - 1];
+  uint8_t *pu8EndChr = NULL, *pu8StartChr = NULL;
+  uint8_t au8STMFrame[STM_FRAME_MAX_LEN];
   uint32_t ui32TotalLen = 0;
   static bool bNewData = false;
   static uint32_t ui32NewDataTime = 0;
   
   if(STM_RX_DMA_STREAM->NDTR == STM_RXBUFF_SIZE)
-    pui8STMRxBuffCur = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1];
+    pu8STMRxBuffCur = &au8STMRxBuff[STM_RXBUFF_SIZE - 1];
   else
-    pui8STMRxBuffCur = &ui8STMRxBuff[STM_RXBUFF_SIZE - STM_RX_DMA_STREAM->NDTR - 1];
+    pu8STMRxBuffCur = &au8STMRxBuff[STM_RXBUFF_SIZE - STM_RX_DMA_STREAM->NDTR - 1];
   
-  if(pui8STMRxBuffCur != pui8STMRxBuffPre)
+  if(pu8STMRxBuffCur != pu8STMRxBuffPre)
   {
-    //new data in ui8STMRxBuff
+    //new data in au8STMRxBuff
     if(bNewData == false)
     {
       bNewData = true;
@@ -315,72 +379,72 @@ bool Gimbal_PC_Read_Timeout(uint32_t ui32TimeOut_ms)
     //A message should receive in ui32TimeOut_ms
     if(SysTick_IsTimeout(ui32NewDataTime, ui32TimeOut_ms) == true)
     {
-      pui8STMRxBuffPre = pui8STMRxBuffCur;
+      pu8STMRxBuffPre = pu8STMRxBuffCur;
       bNewData = false;
       return false;
     }
-    if(pui8STMRxBuffCur > pui8STMRxBuffPre)
+    if(pu8STMRxBuffCur > pu8STMRxBuffPre)
     {
-      //search STM_END_FRAME backward from pui8STMRxBuffCur to pui8STMRxBuffPre
-      pui8EndChr = memrchr(pui8STMRxBuffCur, STM_END_FRAME,pui8STMRxBuffCur - pui8STMRxBuffPre + 1);
-      if(pui8EndChr == NULL) return false;
-      //search STM_START_FRAME backward from pui8EndChr to pui8STMRxBuffPre
-      pui8StartChr = memrchr(pui8EndChr, STM_START_FRAME,pui8EndChr - pui8STMRxBuffPre + 1);
-      if(pui8StartChr == NULL) return false;
-      ui32TotalLen = pui8EndChr - pui8StartChr + 1;
+      //search STM_END_FRAME backward from pu8STMRxBuffCur to pu8STMRxBuffPre
+      pu8EndChr = memrchr(pu8STMRxBuffCur, STM_END_FRAME,pu8STMRxBuffCur - pu8STMRxBuffPre + 1);
+      if(pu8EndChr == NULL) return false;
+      //search STM_START_FRAME backward from pu8EndChr to pu8STMRxBuffPre
+      pu8StartChr = memrchr(pu8EndChr, STM_START_FRAME,pu8EndChr - pu8STMRxBuffPre + 1);
+      if(pu8StartChr == NULL) return false;
+      ui32TotalLen = pu8EndChr - pu8StartChr + 1;
       if(ui32TotalLen > (STM_FRAME_MAX_LEN - 1)) return false;
-      memcpy(ui8STMFrame, pui8StartChr, ui32TotalLen);
-      ui8STMFrame[ui32TotalLen] = 0;
+      memcpy(au8STMFrame, pu8StartChr, ui32TotalLen);
+      au8STMFrame[ui32TotalLen] = 0;
     }
-    else //pui8STMRxBuffCur < pui8STMRxBuffPre
+    else //pu8STMRxBuffCur < pu8STMRxBuffPre
     {
-      //search STM_END_FRAME backward from pui8STMRxBuffCur to ui8STMRxBuff
-      pui8EndChr = memrchr(pui8STMRxBuffCur, STM_END_FRAME,pui8STMRxBuffCur - ui8STMRxBuff + 1);
-      if(pui8EndChr != NULL)
+      //search STM_END_FRAME backward from pu8STMRxBuffCur to au8STMRxBuff
+      pu8EndChr = memrchr(pu8STMRxBuffCur, STM_END_FRAME,pu8STMRxBuffCur - au8STMRxBuff + 1);
+      if(pu8EndChr != NULL)
       {
-        //search STM_START_FRAME backward from pui8EndChr to ui8STMRxBuff
-        pui8StartChr = memrchr(pui8EndChr, STM_START_FRAME,pui8EndChr - ui8STMRxBuff + 1);
-        if(pui8StartChr != NULL)
+        //search STM_START_FRAME backward from pu8EndChr to au8STMRxBuff
+        pu8StartChr = memrchr(pu8EndChr, STM_START_FRAME,pu8EndChr - au8STMRxBuff + 1);
+        if(pu8StartChr != NULL)
         {
-          ui32TotalLen = pui8EndChr - pui8StartChr + 1;
+          ui32TotalLen = pu8EndChr - pu8StartChr + 1;
           if(ui32TotalLen > (STM_FRAME_MAX_LEN - 1)) return false;
-          memcpy(ui8STMFrame, pui8StartChr, ui32TotalLen);
-          ui8STMFrame[ui32TotalLen] = 0;
+          memcpy(au8STMFrame, pu8StartChr, ui32TotalLen);
+          au8STMFrame[ui32TotalLen] = 0;
         }
         else
         {
-          //search STM_START_FRAME backward from &ui8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pui8STMRxBuffPre
-          pui8StartChr = memrchr(&ui8STMRxBuff[STM_RXBUFF_SIZE - 1], STM_START_FRAME,&ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8STMRxBuffPre + 1);
-          if(pui8StartChr == NULL) return false;
-          ui32TotalLen = &ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8StartChr + 1 + pui8EndChr - ui8STMRxBuff + 1;
+          //search STM_START_FRAME backward from &au8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pu8STMRxBuffPre
+          pu8StartChr = memrchr(&au8STMRxBuff[STM_RXBUFF_SIZE - 1], STM_START_FRAME,&au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8STMRxBuffPre + 1);
+          if(pu8StartChr == NULL) return false;
+          ui32TotalLen = &au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8StartChr + 1 + pu8EndChr - au8STMRxBuff + 1;
           if(ui32TotalLen > (STM_FRAME_MAX_LEN - 1)) return false;
-          memcpy(ui8STMFrame, pui8StartChr, &ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8StartChr + 1);
-          memcpy(&ui8STMFrame[&ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8StartChr + 1], ui8STMRxBuff, pui8EndChr - ui8STMRxBuff + 1);
-          ui8STMFrame[ui32TotalLen] = 0;
+          memcpy(au8STMFrame, pu8StartChr, &au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8StartChr + 1);
+          memcpy(&au8STMFrame[&au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8StartChr + 1], au8STMRxBuff, pu8EndChr - au8STMRxBuff + 1);
+          au8STMFrame[ui32TotalLen] = 0;
         }
       }
       else
       {
-        //search STM_END_FRAME backward from &ui8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pui8STMRxBuffPre
-        pui8EndChr = memrchr(&ui8STMRxBuff[STM_RXBUFF_SIZE - 1], STM_END_FRAME,&ui8STMRxBuff[STM_RXBUFF_SIZE - 1] - pui8STMRxBuffPre + 1);
-        if(pui8EndChr == NULL) return false;
-        //search STM_START_FRAME backward from pui8EndChr to pui8STMRxBuffPre
-        pui8StartChr = memrchr(pui8EndChr, STM_START_FRAME,pui8EndChr - pui8STMRxBuffPre + 1);
-        if(pui8StartChr == NULL) return false;
-        ui32TotalLen = pui8EndChr - pui8StartChr + 1;
+        //search STM_END_FRAME backward from &au8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pu8STMRxBuffPre
+        pu8EndChr = memrchr(&au8STMRxBuff[STM_RXBUFF_SIZE - 1], STM_END_FRAME,&au8STMRxBuff[STM_RXBUFF_SIZE - 1] - pu8STMRxBuffPre + 1);
+        if(pu8EndChr == NULL) return false;
+        //search STM_START_FRAME backward from pu8EndChr to pu8STMRxBuffPre
+        pu8StartChr = memrchr(pu8EndChr, STM_START_FRAME,pu8EndChr - pu8STMRxBuffPre + 1);
+        if(pu8StartChr == NULL) return false;
+        ui32TotalLen = pu8EndChr - pu8StartChr + 1;
         if(ui32TotalLen > (STM_FRAME_MAX_LEN - 1)) return false;
-        memcpy(ui8STMFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
-        ui8STMFrame[pui8EndChr - pui8StartChr + 1] = 0;
+        memcpy(au8STMFrame, pu8StartChr, pu8EndChr - pu8StartChr + 1);
+        au8STMFrame[pu8EndChr - pu8StartChr + 1] = 0;
       }
     }
   }
-  else //pui8STMRxBuffCur == pui8STMRxBuffPr
+  else //pu8STMRxBuffCur == pui8STMRxBuffPr
   {
     return false;
   }
   bNewData = false;
-  pui8STMRxBuffPre = pui8EndChr;
-  Gimbal_Receiver_Handler(ui8STMFrame);
+  pu8STMRxBuffPre = pu8EndChr;
+  Gimbal_Receiver_Handler(au8STMFrame);
   return true;
 }
 
@@ -390,8 +454,82 @@ bool Gimbal_PC_Read_Timeout(uint32_t ui32TimeOut_ms)
   * @param  none
   * @retval none
   */
-static void Gimbal_Sender_Init(void)
+void Gimbal_Sender_Init(void)
 {
+  USART_InitTypeDef   USART_InitStructure;
+  GPIO_InitTypeDef    GPIO_InitStructure;
+  DMA_InitTypeDef     DMA_InitStructure;
   
+  RCC_AHB1PeriphClockCmd(HMI_PORT_CLK, ENABLE);
+  /* GPIO configuration */
+  GPIO_InitStructure.GPIO_Pin   = HMI_TX;
+  GPIO_InitStructure.GPIO_Mode  = GPIO_Mode_AF;
+  GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+  GPIO_InitStructure.GPIO_OType = GPIO_OType_PP;
+  GPIO_InitStructure.GPIO_PuPd  = GPIO_PuPd_NOPULL;
+  GPIO_Init(HMI_PORT, &GPIO_InitStructure);
+  GPIO_PinAFConfig(HMI_PORT, HMI_TX_SOURCE, HMI_AF);
+  
+  /* USART configuration */
+  RCC_APB1PeriphClockCmd(HMI_USART_CLK, ENABLE);
+  USART_InitStructure.USART_BaudRate            = HMI_BAUDRATE;
+  USART_InitStructure.USART_WordLength          = USART_WordLength_8b;
+  USART_InitStructure.USART_StopBits            = USART_StopBits_1;
+  USART_InitStructure.USART_Parity              = USART_Parity_No;
+  USART_InitStructure.USART_Mode                = USART_Mode_Rx | USART_Mode_Tx;
+  USART_InitStructure.USART_HardwareFlowControl =  USART_HardwareFlowControl_None;
+  USART_Init(HMI_USART, &USART_InitStructure);
+  USART_Cmd(HMI_USART, ENABLE);
+    
+  USART_ClearFlag(HMI_USART, USART_FLAG_TC);
+  //USART_ClearFlag(HMI_USART, USART_FLAG_RXNE);
+
+  RCC_AHB1PeriphClockCmd(HMI_AHB_PERIPH_DMA, ENABLE);
+  /* DMA TX configuration */
+  DMA_DeInit(HMI_TX_DMA_STREAM);
+  DMA_InitStructure.DMA_Channel            = HMI_TX_DMA_CHANNEL;
+  DMA_InitStructure.DMA_DIR                = DMA_DIR_MemoryToPeripheral;
+  DMA_InitStructure.DMA_Memory0BaseAddr    = 0; //(uint32_t)&au8HMITxBuff[0]; //temporary
+  DMA_InitStructure.DMA_PeripheralBaseAddr = HMI_DATA_REG;   
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_Priority           = DMA_Priority_Low;
+  DMA_InitStructure.DMA_FIFOMode           = DMA_FIFOMode_Disable;
+  DMA_InitStructure.DMA_FIFOThreshold      = DMA_FIFOThreshold_Full;
+  DMA_InitStructure.DMA_MemoryInc          = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralInc      = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_Mode               = DMA_Mode_Normal;
+  DMA_InitStructure.DMA_BufferSize         = 0;
+  DMA_InitStructure.DMA_MemoryBurst        = DMA_MemoryBurst_Single;
+  DMA_InitStructure.DMA_PeripheralBurst    = DMA_PeripheralBurst_Single;
+  DMA_Init(HMI_TX_DMA_STREAM, &DMA_InitStructure);
+  
+  // Enable DMA Stream Transfer Complete interrupt
+  //DMA_ITConfig(HMI_TX_DMA_STREAM, DMA_IT_TC, ENABLE);
+  
+  // Enable USART DMA TX request
+  USART_DMACmd(HMI_USART, USART_DMAReq_Tx, ENABLE);  
+  // Enable DMA TX Channel
+  //DMA_Cmd(HMI_TX_DMA_STREAM, ENABLE);
+}
+
+bool Gimbal_Sender_Send(uint8_t *pu8Message, uint32_t ui32MessageSize)
+{
+  if(ui32MessageSize > HMI_RXBUFF_SIZE)
+  {
+    return false;
+  }
+  else
+  {
+    //check flag
+    
+    //clear flag
+    DMA_ClearFlag(HMI_TX_DMA_STREAM, HMI_TX_DMA_FLAG);
+    DMA_MemoryTargetConfig(HMI_TX_DMA_STREAM, (uint32_t)pu8Message, DMA_Memory_0);
+    DMA_SetCurrDataCounter(HMI_TX_DMA_STREAM, ui32MessageSize);
+    //HMI_TX_DMA_STREAM->NDTR = BUFF_SIZE;
+    DMA_Cmd(HMI_TX_DMA_STREAM, ENABLE);
+    return true;
+	}
 }
 /*********************************END OF FILE**********************************/

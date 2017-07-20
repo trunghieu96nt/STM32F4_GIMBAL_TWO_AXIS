@@ -46,7 +46,7 @@
 
 #define PWM0_PRESCALER            42 // 84M/42=2M
 #define PWM0_PERIOD               1000 // 2M/1000=2k
-#define PWM0_DUTY                 500
+#define PWM0_DUTY                 0
 
 #define PWM1_TIM                  TIM4 // Channel 1
 #define PWM1_TIM_CLK              RCC_APB1Periph_TIM4
@@ -66,8 +66,8 @@
 #endif
 
 #define PWM1_PRESCALER            12 // 84M/12=7M
-#define PWM1_PERIOD               500 // 7M/500=14k
-#define PWM1_DUTY                 250
+#define PWM1_PERIOD               700 // 7M/700=10k
+#define PWM1_DUTY                 0
 
 /* Initialization and Configuration functions --------------------------------*/
 void Gimbal_PWM_Init(void);

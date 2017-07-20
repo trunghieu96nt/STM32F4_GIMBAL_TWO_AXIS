@@ -39,10 +39,10 @@
 /* Public variables ----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-static uint8_t ui8IMURxBuff[IMU_RXBUFF_SIZE]= {0};
+static uint8_t au8STMRxBuff[IMU_RXBUFF_SIZE]= {0};
 STRU_IMU_DATA_T struIMUData = {false}; //initial isAvailable value.
 /* Private function prototypes -----------------------------------------------*/
-bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame);
+bool Gimbal_ADIS_Parse(uint8_t *pu8IMUFrame);
 
 /* Functions ---------------------------------------------------------*/
 /**
@@ -87,7 +87,7 @@ void Gimbal_ADIS_Init(void)
   DMA_DeInit(IMU_RX_DMA_STREAM);  
   DMA_InitStructure.DMA_Channel            = IMU_RX_DMA_CHANNEL;
   DMA_InitStructure.DMA_DIR                = DMA_DIR_PeripheralToMemory;
-  DMA_InitStructure.DMA_Memory0BaseAddr    = (uint32_t)&ui8IMURxBuff[0];
+  DMA_InitStructure.DMA_Memory0BaseAddr    = (uint32_t)&au8STMRxBuff[0];
   DMA_InitStructure.DMA_PeripheralBaseAddr = IMU_DATA_REG;
   DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
   DMA_InitStructure.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
@@ -126,14 +126,14 @@ void Gimbal_ADIS_Init(void)
   */
 void IMU_RX_Interrupt(void)
 {
-  uint8_t ui8rawIMUData[IMU_RXBUFF_SIZE];
+  uint8_t au8RawIMUData[IMU_RXBUFF_SIZE];
   
   if(DMA_GetITStatus(IMU_RX_DMA_STREAM, IMU_RX_TC_IT_FLAG) == SET)
   {
     //DMA_Cmd(IMU_RX_DMA_STREAM, DISABLE);
     DMA_ClearITPendingBit(IMU_RX_DMA_STREAM, IMU_RX_TC_IT_FLAG);
-    memcpy(ui8rawIMUData, ui8IMURxBuff, IMU_RXBUFF_SIZE);
-    Gimbal_ADIS_Parse(ui8rawIMUData);
+    memcpy(au8RawIMUData, au8STMRxBuff, IMU_RXBUFF_SIZE);
+    Gimbal_ADIS_Parse(au8RawIMUData);
   }
 }
 #endif
@@ -142,56 +142,56 @@ void IMU_RX_Interrupt(void)
 /**
   * @brief  Gimbal_ADIS_Parse
   * @note   parse raw IMU frame
-  * @param  pointer *pui8IMUFrame
+  * @param  pointer *pu8IMUFrame
   * @retval true if parse correctly and vice versa
   */
-bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
+bool Gimbal_ADIS_Parse(uint8_t *pu8IMUFrame)
 {
   uint32_t ui32Idx = 0;
-  uint8_t *pui8End = NULL, *pui8Start = pui8IMUFrame + 2;
+  uint8_t *pu8End = NULL, *pu8Start = pu8IMUFrame + 2;
   
-  if(strlen((char *)pui8IMUFrame) != 87) return false;
+  if(strlen((char *)pu8IMUFrame) != 87) return false;
   //get euler
   for(ui32Idx = 0; ui32Idx < 3; ui32Idx++)
   {
-    pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
-    if(pui8End == NULL) return false;
-    *pui8End = 0;
-    *(&struIMUData.euler_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_EULER_UNIT;
-    pui8Start = pui8End + 2;
+    pu8End = memchr(pu8Start, ' ', IMU_ELEMENT_MAX_LEN);
+    if(pu8End == NULL) return false;
+    *pu8End = 0;
+    *(&struIMUData.euler_x + ui32Idx) = (double)atoi((char *)pu8Start - 1) * IMU_SCALE_EULER_UNIT;
+    pu8Start = pu8End + 2;
   }
   //get gyro
   for(ui32Idx = 0; ui32Idx < 3; ui32Idx++)
   {
-    pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
-    if(pui8End == NULL) return false;
-    *pui8End = 0;
-    *(&struIMUData.gyro_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_GYRO_UNIT;
-    pui8Start = pui8End + 2;
+    pu8End = memchr(pu8Start, ' ', IMU_ELEMENT_MAX_LEN);
+    if(pu8End == NULL) return false;
+    *pu8End = 0;
+    *(&struIMUData.gyro_x + ui32Idx) = (double)atoi((char *)pu8Start - 1) * IMU_SCALE_GYRO_UNIT;
+    pu8Start = pu8End + 2;
   }
   //get mag
   for(ui32Idx = 0; ui32Idx < 3; ui32Idx++)
   {
-    pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
-    if(pui8End == NULL) return false;
-    *pui8End = 0;
-    *(&struIMUData.mag_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_MAG_UNIT;
-    pui8Start = pui8End + 2;
+    pu8End = memchr(pu8Start, ' ', IMU_ELEMENT_MAX_LEN);
+    if(pu8End == NULL) return false;
+    *pu8End = 0;
+    *(&struIMUData.mag_x + ui32Idx) = (double)atoi((char *)pu8Start - 1) * IMU_SCALE_MAG_UNIT;
+    pu8Start = pu8End + 2;
   }
   //get acc
   for(ui32Idx = 0; ui32Idx < 3; ui32Idx++)
   {
-    pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
-    if(pui8End == NULL) return false;
-    *pui8End = 0;
-    *(&struIMUData.acc_x + ui32Idx) = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_ACC_UNIT;
-    pui8Start = pui8End + 2;
+    pu8End = memchr(pu8Start, ' ', IMU_ELEMENT_MAX_LEN);
+    if(pu8End == NULL) return false;
+    *pu8End = 0;
+    *(&struIMUData.acc_x + ui32Idx) = (double)atoi((char *)pu8Start - 1) * IMU_SCALE_ACC_UNIT;
+    pu8Start = pu8End + 2;
   }
   //get gyro fog
-  pui8End = memchr(pui8Start, ' ', IMU_ELEMENT_MAX_LEN);
-  if(pui8End == NULL) return false;
-  *pui8End = 0;
-  struIMUData.gyro_fog = (double)atoi((char *)pui8Start - 1) * IMU_SCALE_FOG_UNIT;
+  pu8End = memchr(pu8Start, ' ', IMU_ELEMENT_MAX_LEN);
+  if(pu8End == NULL) return false;
+  *pu8End = 0;
+  struIMUData.gyro_fog = (double)atoi((char *)pu8Start - 1) * IMU_SCALE_FOG_UNIT;
   return true;
 }
 
@@ -204,68 +204,68 @@ bool Gimbal_ADIS_Parse(uint8_t *pui8IMUFrame)
   */
 bool Gimbal_ADIS_Read(void)
 {
-  static uint8_t *pui8IMURxBuffCur = &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1];
-  static uint8_t *pui8IMURxBuffPre = &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1];
-  uint8_t *pui8EndChr = NULL, *pui8StartChr = NULL;
-  uint8_t ui8IMUFrame[IMU_FRAME_MAX_LEN];
+  static uint8_t *pu8IMURxBuffCur = &au8STMRxBuff[IMU_RXBUFF_SIZE - 1];
+  static uint8_t *pu8IMURxBuffPre = &au8STMRxBuff[IMU_RXBUFF_SIZE - 1];
+  uint8_t *pu8EndChr = NULL, *pu8StartChr = NULL;
+  uint8_t au8IMUFrame[IMU_FRAME_MAX_LEN];
   
   if(IMU_RX_DMA_STREAM->NDTR == IMU_RXBUFF_SIZE)
-    pui8IMURxBuffCur = &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1];
+    pu8IMURxBuffCur = &au8STMRxBuff[IMU_RXBUFF_SIZE - 1];
   else
-    pui8IMURxBuffCur = &ui8IMURxBuff[IMU_RXBUFF_SIZE - IMU_RX_DMA_STREAM->NDTR - 1];
+    pu8IMURxBuffCur = &au8STMRxBuff[IMU_RXBUFF_SIZE - IMU_RX_DMA_STREAM->NDTR - 1];
   
-  if(pui8IMURxBuffCur > pui8IMURxBuffPre)
+  if(pu8IMURxBuffCur > pu8IMURxBuffPre)
   {
-    //search IMU_END_FRAME backward from pui8IMURxBuffCur to pui8IMURxBuffPre
-    pui8EndChr = memrchr(pui8IMURxBuffCur, IMU_END_FRAME,pui8IMURxBuffCur - pui8IMURxBuffPre + 1);
-    if(pui8EndChr == NULL) return false;
-    //search IMU_START_FRAME backward from pui8EndChr to pui8IMURxBuffPre
-    pui8StartChr = memrchr(pui8EndChr, IMU_START_FRAME,pui8EndChr - pui8IMURxBuffPre + 1);
-    if(pui8StartChr == NULL) return false;
-    memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
-    ui8IMUFrame[pui8EndChr - pui8StartChr + 1] = 0;
+    //search IMU_END_FRAME backward from pu8IMURxBuffCur to pu8IMURxBuffPre
+    pu8EndChr = memrchr(pu8IMURxBuffCur, IMU_END_FRAME,pu8IMURxBuffCur - pu8IMURxBuffPre + 1);
+    if(pu8EndChr == NULL) return false;
+    //search IMU_START_FRAME backward from pu8EndChr to pu8IMURxBuffPre
+    pu8StartChr = memrchr(pu8EndChr, IMU_START_FRAME,pu8EndChr - pu8IMURxBuffPre + 1);
+    if(pu8StartChr == NULL) return false;
+    memcpy(au8IMUFrame, pu8StartChr, pu8EndChr - pu8StartChr + 1);
+    au8IMUFrame[pu8EndChr - pu8StartChr + 1] = 0;
   }
-  else if(pui8IMURxBuffCur < pui8IMURxBuffPre)
+  else if(pu8IMURxBuffCur < pu8IMURxBuffPre)
   {
-    //search IMU_END_FRAME backward from pui8IMURxBuffCur to ui8IMURxBuff
-    pui8EndChr = memrchr(pui8IMURxBuffCur, IMU_END_FRAME,pui8IMURxBuffCur - ui8IMURxBuff + 1);
-    if(pui8EndChr != NULL)
+    //search IMU_END_FRAME backward from pu8IMURxBuffCur to au8STMRxBuff
+    pu8EndChr = memrchr(pu8IMURxBuffCur, IMU_END_FRAME,pu8IMURxBuffCur - au8STMRxBuff + 1);
+    if(pu8EndChr != NULL)
     {
-      //search IMU_START_FRAME backward from pui8EndChr to ui8IMURxBuff
-      pui8StartChr = memrchr(pui8EndChr, IMU_START_FRAME,pui8EndChr - ui8IMURxBuff + 1);
-      if(pui8StartChr != NULL)
+      //search IMU_START_FRAME backward from pu8EndChr to au8STMRxBuff
+      pu8StartChr = memrchr(pu8EndChr, IMU_START_FRAME,pu8EndChr - au8STMRxBuff + 1);
+      if(pu8StartChr != NULL)
       {
-        memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
-        ui8IMUFrame[pui8EndChr - pui8StartChr + 1] = 0;
+        memcpy(au8IMUFrame, pu8StartChr, pu8EndChr - pu8StartChr + 1);
+        au8IMUFrame[pu8EndChr - pu8StartChr + 1] = 0;
       }
       else
       {
-        //search IMU_START_FRAME backward from &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] to pui8IMURxBuffPre
-        pui8StartChr = memrchr(&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1], IMU_START_FRAME,&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8IMURxBuffPre + 1);
-        if(pui8StartChr == NULL) return false;
-        memcpy(ui8IMUFrame, pui8StartChr, &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1);
-        memcpy(&ui8IMUFrame[&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1], ui8IMURxBuff, pui8EndChr - ui8IMURxBuff + 1);
-        ui8IMUFrame[&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8StartChr + 1 + pui8EndChr - ui8IMURxBuff + 1] = 0;
+        //search IMU_START_FRAME backward from &au8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pu8IMURxBuffPre
+        pu8StartChr = memrchr(&au8STMRxBuff[IMU_RXBUFF_SIZE - 1], IMU_START_FRAME,&au8STMRxBuff[IMU_RXBUFF_SIZE - 1] - pu8IMURxBuffPre + 1);
+        if(pu8StartChr == NULL) return false;
+        memcpy(au8IMUFrame, pu8StartChr, &au8STMRxBuff[IMU_RXBUFF_SIZE - 1] - pu8StartChr + 1);
+        memcpy(&au8IMUFrame[&au8STMRxBuff[IMU_RXBUFF_SIZE - 1] - pu8StartChr + 1], au8STMRxBuff, pu8EndChr - au8STMRxBuff + 1);
+        au8IMUFrame[&au8STMRxBuff[IMU_RXBUFF_SIZE - 1] - pu8StartChr + 1 + pu8EndChr - au8STMRxBuff + 1] = 0;
       }
     }
     else
     {
-      //search IMU_END_FRAME backward from &ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] to pui8IMURxBuffPre
-      pui8EndChr = memrchr(&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1], IMU_END_FRAME,&ui8IMURxBuff[IMU_RXBUFF_SIZE - 1] - pui8IMURxBuffPre + 1);
-      if(pui8EndChr == NULL) return false;
-      //search IMU_START_FRAME backward from pui8EndChr to pui8IMURxBuffPre
-      pui8StartChr = memrchr(pui8EndChr, IMU_START_FRAME,pui8EndChr - pui8IMURxBuffPre + 1);
-      if(pui8StartChr == NULL) return false;
-      memcpy(ui8IMUFrame, pui8StartChr, pui8EndChr - pui8StartChr + 1);
-      ui8IMUFrame[pui8EndChr - pui8StartChr + 1] = 0;
+      //search IMU_END_FRAME backward from &au8STMRxBuff[IMU_RXBUFF_SIZE - 1] to pu8IMURxBuffPre
+      pu8EndChr = memrchr(&au8STMRxBuff[IMU_RXBUFF_SIZE - 1], IMU_END_FRAME,&au8STMRxBuff[IMU_RXBUFF_SIZE - 1] - pu8IMURxBuffPre + 1);
+      if(pu8EndChr == NULL) return false;
+      //search IMU_START_FRAME backward from pu8EndChr to pu8IMURxBuffPre
+      pu8StartChr = memrchr(pu8EndChr, IMU_START_FRAME,pu8EndChr - pu8IMURxBuffPre + 1);
+      if(pu8StartChr == NULL) return false;
+      memcpy(au8IMUFrame, pu8StartChr, pu8EndChr - pu8StartChr + 1);
+      au8IMUFrame[pu8EndChr - pu8StartChr + 1] = 0;
     }
   }
-  else //pui8IMURxBuffCur == pui8IMURxBuffPr
+  else //pu8IMURxBuffCur == pui8IMURxBuffPr
   {
     return false;
   }
-  pui8IMURxBuffPre = pui8EndChr;
-  if(Gimbal_ADIS_Parse(ui8IMUFrame) == false) return false;
+  pu8IMURxBuffPre = pu8EndChr;
+  if(Gimbal_ADIS_Parse(au8IMUFrame) == false) return false;
   return true;
 }
 

@@ -32,58 +32,120 @@
 #include "gimbal_params.h"
 //#include "stm32f4xx.h"
 #include "eeprom_i2c.h"
+#include "pid.h"
 
+#include "gimbal_pc.h"
+#include "stdio.h"
+#include "string.h"
+
+/* Extern variables ----------------------------------------------------------*/
+extern STRU_PID_T stru_PID_AZ_Manual_Pos_Outer;
+
+extern STRU_PID_T stru_PID_EL_Manual_Pos_Outer;
+extern STRU_PID_T stru_PID_EL_Manual_Vel_Inner;
 /* Public variables ----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
+static const uint8_t CODE_VESION_ARRAY[2] = {10, 1}; //Major.Minor
+static const uint8_t au8ParamsIDLen[NUM_PARAMS_MAX] =
+{
+  /* Length. */     /* PARAMS_ID. */
+  2,                //CODE_VERSION = 0,
+  12,               //PARAMS_PID_AZ_MANUAL_POS_OUTER,
+  12,               //PARAMS_PID_EL_MANUAL_POS_OUTER,
+  12,               //PARAMS_PID_EL_MANUAL_VEL_INNER,
+  
+//  12,               //PARAMS_PID_AZ_POINTING_POS_OUTER,
+//  12,               //PARAMS_PID_AZ_POINTING_VEL_INNER,
+//  12,               //PARAMS_PID_EL_POINTING_POS_OUTER
+//  12,               //PARAMS_PID_EL_POINTING_VEL_INNER
+};
 /* Private function prototypes -----------------------------------------------*/
+uint32_t Gimbal_Params_Get_Pos(ENUM_PARAMS_T enumParams);
+
 /* Functions ---------------------------------------------------------*/
 /**
-  * @brief  ...
+  * @brief  Get Pos of params in real eeprom
   * @note   ...
+  * @param  ENUM_PARAMS_T enumParams
+  * @retval ui32Pos
+  */
+uint32_t Gimbal_Params_Get_Pos(ENUM_PARAMS_T enumParams)
+{
+  uint32_t ui32Idx = 0, ui32Pos = 0;
+  for(ui32Idx = 0; ui32Idx < enumParams; ui32Idx++)
+  {
+    ui32Pos += au8ParamsIDLen[ui32Idx];
+  }
+  return ui32Pos;
+}
+
+/**
+  * @brief  save params
+  * @note   ...
+  * @param  ENUM_PARAMS_T enumParams
+  * @param  const uint8_t *pu8Data: pointer of data need to save
+  * @retval true if succeed and vice versa
+  */
+bool Gimbal_Params_Save(ENUM_PARAMS_T enumParams, const uint8_t *pu8Data)
+{
+  /* Test */
+//  char cTest[20];
+//  uint32_t ui32Idx = 0, ui32Test;
+//  for(ui32Idx = 0; ui32Idx < au8ParamsIDLen[enumParams]; ui32Idx++)
+//  {
+//    ui32Test = Gimbal_Params_Get_Pos(enumParams);
+//    printf(cTest,"%d\r\n", ui32Test);
+//    Gimbal_Sender_Send((uint8_t *)cTest, strlen(cTest));
+//  }
+  return EEP_WriteBytes(pu8Data, Gimbal_Params_Get_Pos(enumParams), au8ParamsIDLen[enumParams]);
+}
+
+/**
+  * @brief  load params
+  * @note   ...
+  * @param  ENUM_PARAMS_T enumParams
+  * @param  uint8_t *pu8Data: pointer of data store data loaded from eeprom
+  * @retval true if succeed and vice versa
+  */
+bool Gimbal_Params_Load(ENUM_PARAMS_T enumParams, uint8_t *pu8Data)
+{
+  return EEP_ReadBytes(pu8Data, Gimbal_Params_Get_Pos(enumParams), au8ParamsIDLen[enumParams]);
+}
+
+/**
+  * @brief  save default params
+  * @note   
   * @param  none
   * @retval none
   */
-uint8_t CODE_VESION_ARRAY[4] = {1, 0, 0, 1};
-
-bool Gimbal_Params_Save_Word(ENUM_PARAMS_T enumParams, uint8_t *pui8Data)
+void Gimbal_Params_Save_Default(void)
 {
-  return EEP_WriteBytes(pui8Data, (uint32_t)(enumParams << 2), 4);
+  Gimbal_Params_Save(CODE_VERSION, CODE_VESION_ARRAY);
+  Gimbal_Params_Save(PARAMS_PID_AZ_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_AZ_Manual_Pos_Outer);
+  Gimbal_Params_Save(PARAMS_PID_EL_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_EL_Manual_Pos_Outer);
+  Gimbal_Params_Save(PARAMS_PID_EL_MANUAL_VEL_INNER, (uint8_t *)&stru_PID_EL_Manual_Vel_Inner);
 }
 
-bool Gimbal_Params_Save_Float(ENUM_PARAMS_T enumParams, float fValue)
-{
-  UNION_FLOAT_DATA_T unionFloatData;
-  unionFloatData.fValue = fValue;
-  return Gimbal_Params_Save_Word(enumParams, unionFloatData.byte);
-}
-
-bool Gimbal_Params_Load_Float(ENUM_PARAMS_T enumParams, float *pfValue)
-{
-  UNION_FLOAT_DATA_T unionFloatData;
-  if(EEP_ReadBytes(unionFloatData.byte, (uint32_t)(enumParams << 2), 4))
-  {
-    *pfValue = unionFloatData.fValue;
-    return true;
-  }
-  else return false;
-}
-
-bool Gimbal_Params_Load_Word(ENUM_PARAMS_T enumParams, uint8_t *pui8Data)
-{
-  if(EEP_ReadBytes(pui8Data, (uint32_t)(enumParams << 2), 4))
-    return true;
-  else return false;
-}
-
-void Gimbal_Params_Save_All(void)
-{
-  
-}
-
+/**
+  * @brief  load all params
+  * @note   
+  * @param  none
+  * @retval none
+  */
 void Gimbal_Params_Load_All(void)
 {
+  uint8_t au8CodeVersion[2] = {0, 0};
   
+  Gimbal_Params_Load(CODE_VERSION, au8CodeVersion);
+  if((au8CodeVersion[0] != CODE_VESION_ARRAY[0]) || (au8CodeVersion[1] != CODE_VESION_ARRAY[1]))
+  {
+    Gimbal_Params_Save_Default();
+  }
+  
+  Gimbal_Params_Load(PARAMS_PID_AZ_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_AZ_Manual_Pos_Outer);
+  Gimbal_Params_Load(PARAMS_PID_EL_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_EL_Manual_Pos_Outer);
+  Gimbal_Params_Load(PARAMS_PID_EL_MANUAL_VEL_INNER, (uint8_t *)&stru_PID_EL_Manual_Vel_Inner);
 }
 
 /*********************************END OF FILE**********************************/

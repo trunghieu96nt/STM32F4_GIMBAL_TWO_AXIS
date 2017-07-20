@@ -39,13 +39,13 @@
    || (x == TIM10) || (x == TIM11))
 
 /* Private variables ---------------------------------------------------------*/
-static int32_t i32Enc0_AngleCur = 0;
-static int32_t i32Enc0_Dp = 0;
-static int32_t i32Enc0_P0 = 0,i32Enc0_P1 = 0;
+static volatile int32_t i32Enc0_Cur = 0;
+static volatile int32_t i32Enc0_Dp = 0;
+static volatile int32_t i32Enc0_P0 = 0,i32Enc0_P1 = 0;
 
-static int32_t i32Enc1_AngleCur = 0;
-static int32_t i32Enc1_Dp = 0;
-static int32_t i32Enc1_P0 = 0,i32Enc1_P1 = 0;
+static volatile int32_t i32Enc1_Cur = 0;
+static volatile int32_t i32Enc1_Dp = 0;
+static volatile int32_t i32Enc1_P0 = 0,i32Enc1_P1 = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void Gimbal_ENC0_Init(void);
@@ -62,6 +62,10 @@ void Gimbal_ENC_Init(void)
 {
   Gimbal_ENC0_Init();
   Gimbal_ENC1_Init();
+  
+  //Must call before reset
+  Gimbal_ENC0_Get_Pos();
+  Gimbal_ENC1_Get_Pos();
   
   Gimbal_ENC0_Reset();
   Gimbal_ENC1_Reset();
@@ -112,7 +116,7 @@ void Gimbal_ENC0_Init(void)
   * @brief  Get ENC0 Pos
   * @note   ...
   * @param  none
-  * @retval int32_t i32Enc0_AngleCur
+  * @retval int32_t i32Enc0_Cur
   */
 int32_t Gimbal_ENC0_Get_Pos(void)
 {
@@ -130,25 +134,37 @@ int32_t Gimbal_ENC0_Get_Pos(void)
       i32Enc0_Dp += 65536;
     }
     i32Enc0_P1 = i32Enc0_P0;
-    i32Enc0_AngleCur += i32Enc0_Dp;
+    i32Enc0_Cur += i32Enc0_Dp;
   }
   else
   {
-    i32Enc0_AngleCur = i32Enc0_P0;
+    i32Enc0_Cur = i32Enc0_P0;
   }
-  return i32Enc0_AngleCur;
+  return i32Enc0_Cur;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Get ENC0 Angle
+  * @note   ...
+  * @param  none
+  * @retval float ENC0 Angle
+  */
+float Gimbal_ENC0_Get_Angle(void)
+{
+  return (float)Gimbal_ENC0_Get_Pos() * ENC0_ANGLE_SCALE;
 }
 
 /* Functions ---------------------------------------------------------*/
 /**
   * @brief  Reset ENC0 Pos
-  * @note   Reset i32Enc0_AngleCur
+  * @note   Reset i32Enc0_Cur
   * @param  none
   * @retval none
   */
 void Gimbal_ENC0_Reset(void)
 {
-  i32Enc0_AngleCur = 0;
+  i32Enc0_Cur = 0;
 }
 
 /* Functions ---------------------------------------------------------*/
@@ -190,6 +206,13 @@ void Gimbal_ENC1_Init(void)
   ENC1_TIM_POS->CNT = 0;
 }
 
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Get ENC1 Pos
+  * @note   ...
+  * @param  none
+  * @retval int32_t i32Enc1_Cur
+  */
 int32_t Gimbal_ENC1_Get_Pos(void)
 {
   i32Enc1_P0 = (int32_t)ENC1_TIM_POS->CNT;
@@ -206,25 +229,37 @@ int32_t Gimbal_ENC1_Get_Pos(void)
       i32Enc1_Dp += 65536;
     }
     i32Enc1_P1 = i32Enc1_P0;
-    i32Enc1_AngleCur += i32Enc1_Dp;
+    i32Enc1_Cur += i32Enc1_Dp;
   }
   else
   {
-    i32Enc1_AngleCur = i32Enc1_P0;
+    i32Enc1_Cur = i32Enc1_P0;
   }
-  return i32Enc1_AngleCur;
+  return i32Enc1_Cur;
+}
+
+/* Functions ---------------------------------------------------------*/
+/**
+  * @brief  Get ENC1 Angle
+  * @note   ...
+  * @param  none
+  * @retval float ENC1 Angle
+  */
+float Gimbal_ENC1_Get_Angle(void)
+{
+  return (float)Gimbal_ENC1_Get_Pos() * ENC1_ANGLE_SCALE;
 }
 
 /* Functions ---------------------------------------------------------*/
 /**
   * @brief  Reset ENC1 Pos
-  * @note   Reset i32Enc1_AngleCur
+  * @note   Reset i32Enc1_Cur
   * @param  none
   * @retval none
   */
 void Gimbal_ENC1_Reset(void)
 {
-  i32Enc1_AngleCur = 0;
+  i32Enc1_Cur = 0;
 }
 
 /*********************************END OF FILE**********************************/

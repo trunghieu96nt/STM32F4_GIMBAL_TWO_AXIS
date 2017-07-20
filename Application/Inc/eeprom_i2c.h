@@ -44,8 +44,8 @@ extern "C" {
 /* Initialization and Configuration functions --------------------------------*/
 void EEP_Init(void);
 /* Functions -----------------------------------------------------------------*/
-bool EEP_WriteBytes(uint8_t* pui8Buff, uint16_t ui16RegAdd, uint16_t ui16Len);
-bool EEP_ReadBytes(uint8_t* pui8Buff, uint16_t ui16RegAdd, uint16_t ui16Len);
+bool EEP_WriteBytes(const uint8_t* pu8Buff, uint16_t ui16RegAdd, uint16_t ui16Len);
+bool EEP_ReadBytes(uint8_t* pu8Buff, uint16_t ui16RegAdd, uint16_t ui16Len);
 
 #ifdef __cplusplus
 }
