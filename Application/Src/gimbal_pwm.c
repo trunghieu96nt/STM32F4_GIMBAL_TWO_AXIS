@@ -185,6 +185,11 @@ void Gimbal_PWM0_Set_Duty(int16_t d)
   PWM0_TIM->CCR1 = (uint32_t)d;
 }
 
+void Gimbal_PWM_EL_Set_Duty(int16_t d)
+{
+  Gimbal_PWM0_Set_Duty(d);
+}
+
 /* Functions ---------------------------------------------------------*/
 /**
   * @brief  Initialize Gimbal PWM1
@@ -273,7 +278,7 @@ void Gimbal_PWM1_Set_Freq(uint32_t freq)
 
 /* Functions ---------------------------------------------------------*/
 /**
-  * @brief  Set Duty PWM0
+  * @brief  Set Duty PWM1 (AZ)
   * @note   ...
   * @param  int16_t d: -1000 -> 1000
   * @retval none
@@ -296,18 +301,23 @@ void Gimbal_PWM1_Set_Duty(int16_t d)
 #if PWM1_USE_EN_PIN
     PWM1_EN_PORT->BSRRL = PWM1_EN; // enable
 #endif
-    PWM1_DIR_PORT->BSRRH = PWM1_DIR; //1, forward
+    PWM1_DIR_PORT->BSRRL = PWM1_DIR; //0,  backward
   }
   else // (d<0)
   {
 #if PWM1_USE_EN_PIN
     PWM1_EN_PORT->BSRRL = PWM1_EN; // enable
 #endif
-    PWM1_DIR_PORT->BSRRL = PWM1_DIR; //0,  backward
+    PWM1_DIR_PORT->BSRRH = PWM1_DIR; //1, forward
     d = -d;
   }
   d = ((PWM1_TIM->ARR + 1) * d + 500) / 1000;
   PWM1_TIM->CCR1 = (uint32_t)d;
+}
+
+void Gimbal_PWM_AZ_Set_Duty(int16_t d)
+{
+  Gimbal_PWM1_Set_Duty(d);
 }
 
 /* Functions ---------------------------------------------------------*/

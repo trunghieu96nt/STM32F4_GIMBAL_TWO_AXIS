@@ -25,7 +25,7 @@ extern "C" {
 #include "stdint.h"
 
 /* Define --------------------------------------------------------------------*/
-#define PID_METHOD_2
+#define PID_METHOD_3
 #define PID_DEFAULT_SYSTEM_TS             0.001f
 #define PID_DEFAULT_D_PART_ALPHA          0.1f
 #define PID_DEFAULT_MAX_RESPONSE          900
@@ -56,6 +56,7 @@ typedef struct
   float dPart;
   float dPartRaw;
   float Result;
+  float ResultRaw;
 } STRU_PID_T;
 /* Initialization and Configuration functions --------------------------------*/
 void PID_Init(STRU_PID_T *pidName);

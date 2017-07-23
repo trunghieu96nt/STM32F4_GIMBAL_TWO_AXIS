@@ -2,8 +2,6 @@
 
 extern STRU_IMU_DATA_T struIMUData;
 
-
-
 void Board_Init()
 {
   /* Enable SysTick at 1ms interrupt */
@@ -17,7 +15,7 @@ void Board_Init()
   Gimbal_Control_Init();
   
   EEP_Init();
-  Gimbal_Params_Load_All();
+  //Gimbal_Params_Load_All();
 
   //waiting for struIMUData is available
   while(struIMUData.isAvailable == false)

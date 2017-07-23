@@ -145,7 +145,59 @@ float PID_Calc(STRU_PID_T *pidName, float fFeedback)
   pidName->e_ =pidName->e;
   
   pidName->Result = pidName->pPart + pidName->iPart + pidName->dPart;
+  
+  if(pidName->Result > pidName->MaxResponse)
+    pidName->Result = pidName->MaxResponse;
+  else if(pidName->Result < -pidName->MaxResponse)
+    pidName->Result = -pidName->MaxResponse;
+  
   return pidName->Result;
+#endif
+
+#ifdef PID_METHOD_3
+  if(pidName->UseSetPointRamp != 0) //true
+  {
+    if(pidName->SetPointBuff > (pidName->SetPoint + pidName->MaxSetPointStep))
+      pidName->SetPoint += pidName->MaxSetPointStep;
+    else if (pidName->SetPointBuff < (pidName->SetPoint - pidName->MaxSetPointStep))
+      pidName->SetPoint -= pidName->MaxSetPointStep;
+    else
+      pidName->SetPoint = pidName->SetPointBuff;
+  }
+  
+  pidName->e = pidName->SetPoint - fFeedback;
+  if(fabsf(pidName->e) < pidName->DeadBand) pidName->e = 0;
+  
+  //pPart
+  pidName->pPart = pidName->Kp * pidName->e;
+  
+  //iPart
+  pidName->iPart += pidName->Ki * (pidName->e + pidName->e_) / 2;
+  if (pidName->iPart > pidName->MaxResponse)
+    pidName->iPart = pidName->MaxResponse;
+  else if (pidName->iPart < -pidName->MaxResponse) 
+    pidName->iPart = -pidName->MaxResponse;
+  
+  //dPart
+  pidName->dPartRaw = pidName->Kd * (pidName->e - pidName->e_);
+  pidName->dPart = pidName->dPart + pidName->dPartAlpha * (pidName->dPartRaw - pidName->dPart);
+  
+  if (pidName->dPart > (pidName->MaxResponse / 2))
+    pidName->dPart = pidName->MaxResponse / 2;
+  else if (pidName->dPart < (-pidName->MaxResponse / 2))
+    (*pidName).dPart = -pidName->MaxResponse / 2;
+  
+  pidName->e_ =pidName->e;
+  
+  pidName->Result = pidName->pPart + pidName->iPart + pidName->dPart;
+  
+  if(pidName->Result > pidName->MaxResponse)
+    pidName->Result = pidName->MaxResponse;
+  else if(pidName->Result < -pidName->MaxResponse)
+    pidName->Result = -pidName->MaxResponse;
+  
+  pidName->ResultRaw = pidName->ResultRaw + pidName->dPartAlpha * (pidName->Result - pidName->ResultRaw);
+  return pidName->ResultRaw;
 #endif
 }
 

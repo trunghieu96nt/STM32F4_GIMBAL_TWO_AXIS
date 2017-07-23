@@ -28,9 +28,8 @@
 /* Struct --------------------------------------------------------------------*/
 typedef enum{
   CODE_VERSION = 0,
-  PARAMS_PID_AZ_MANUAL_POS_OUTER,
-  PARAMS_PID_EL_MANUAL_POS_OUTER,
-  PARAMS_PID_EL_MANUAL_VEL_INNER
+  PARAMS_PID_AZ_MANUAL_POS,
+  PARAMS_PID_EL_MANUAL_POS,
 } ENUM_PARAMS_T;
 
 /* Union ---------------------------------------------------------------------*/

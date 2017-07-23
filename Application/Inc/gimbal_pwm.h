@@ -44,8 +44,8 @@
 #define PWM0_EN                   GPIO_Pin_10
 #endif
 
-#define PWM0_PRESCALER            42 // 84M/42=2M
-#define PWM0_PERIOD               1000 // 2M/1000=2k
+#define PWM0_PRESCALER            12 // 84M/12=7M
+#define PWM0_PERIOD               700 // 7M/700=10k
 #define PWM0_DUTY                 0
 
 #define PWM1_TIM                  TIM4 // Channel 1
@@ -77,6 +77,9 @@ void Gimbal_PWM0_Set_Freq(uint32_t freq);
 void Gimbal_PWM0_Set_Duty(int16_t d);
 void Gimbal_PWM1_Set_Freq(uint32_t freq);
 void Gimbal_PWM1_Set_Duty(int16_t d);
+
+void Gimbal_PWM_EL_Set_Duty(int16_t d);
+void Gimbal_PWM_AZ_Set_Duty(int16_t d);
 
 #ifdef __cplusplus
 }

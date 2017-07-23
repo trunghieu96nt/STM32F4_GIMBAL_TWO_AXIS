@@ -25,19 +25,22 @@ extern "C" {
 /* Define --------------------------------------------------------------------*/
 /* Struct --------------------------------------------------------------------*/
 /* Enum ----------------------------------------------------------------------*/
+
 typedef enum {
-  STATE_IDLE = 0,
+  STATE_KEEP = -1,
+  STATE_IDLE,
   STATE_HOME,
   STATE_MANUAL,
   STATE_POINTING,
   STATE_TRACKING,
-  STATE_TEST_SINE_ANGLE,
+  STATE_TEST_SINE,
 } ENUM_AXIS_STATE_T;
 
 /* Initialization and Configuration functions --------------------------------*/
 /* Functions -----------------------------------------------------------------*/
 void Gimbal_Control_Init(void);
 void Gimbal_Control(void);
+void Gimbal_Control_Change_Mode(ENUM_AXIS_STATE_T enumAZState, ENUM_AXIS_STATE_T enumELState);
 
 #ifdef __cplusplus
 }

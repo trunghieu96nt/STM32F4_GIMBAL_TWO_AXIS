@@ -63,10 +63,6 @@ void Gimbal_ENC_Init(void)
   Gimbal_ENC0_Init();
   Gimbal_ENC1_Init();
   
-  //Must call before reset
-  Gimbal_ENC0_Get_Pos();
-  Gimbal_ENC1_Get_Pos();
-  
   Gimbal_ENC0_Reset();
   Gimbal_ENC1_Reset();
 }
@@ -164,6 +160,7 @@ float Gimbal_ENC0_Get_Angle(void)
   */
 void Gimbal_ENC0_Reset(void)
 {
+  Gimbal_ENC0_Get_Pos(); //for save pre variable
   i32Enc0_Cur = 0;
 }
 
@@ -259,6 +256,7 @@ float Gimbal_ENC1_Get_Angle(void)
   */
 void Gimbal_ENC1_Reset(void)
 {
+  Gimbal_ENC1_Get_Pos(); //for save pre variable
   i32Enc1_Cur = 0;
 }
 

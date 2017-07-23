@@ -27,6 +27,7 @@
 /* Define --------------------------------------------------------------------*/
 
 // Gimbal receiver (receive from pc)
+#define STM_TXBUFF_SIZE       128
 #define STM_RXBUFF_SIZE       1024
 #define STM_FRAME_MAX_LEN     128
 #define STM_START_FRAME       '{'
@@ -57,6 +58,7 @@
 #define STM_RX_Interrupt      DMA1_Stream5_IRQHandler
 
 // Gimbal sender (send to pc)
+#define HMI_TXBUFF_SIZE       128
 #define HMI_RXBUFF_SIZE       128
 
 #define HMI_USART             USART3
@@ -89,7 +91,8 @@ void Gimbal_PC_Init(void);
 /* Functions -----------------------------------------------------------------*/
 bool Gimbal_PC_Read(void);
 bool Gimbal_PC_Read_Timeout(uint32_t ui32TimeOut_ms);
-bool Gimbal_Sender_Send(uint8_t *pu8Message, uint32_t ui32MessageSize);
+bool Gimbal_Receiver_Send(const uint8_t *pu8Message, uint32_t ui32MessageSize);
+bool Gimbal_Sender_Send(const uint8_t *pu8Message, uint32_t ui32MessageSize);
 
 #ifdef __cplusplus
 }

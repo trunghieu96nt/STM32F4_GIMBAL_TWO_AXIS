@@ -39,11 +39,11 @@
 #define IMU_START_FRAME       0x0a
 #define IMU_END_FRAME         0x0d
 
-#define IMU_SCALE_EULER_UNIT  0.0001 // deg
-#define IMU_SCALE_GYRO_UNIT   0.1 // mrad/s
-#define IMU_SCALE_MAG_UNIT    0.1 // mgauss
-#define IMU_SCALE_ACC_UNIT    0.1 // mg
-#define IMU_SCALE_FOG_UNIT    0.01 // mdeg/s
+#define IMU_SCALE_EULER_UNIT  0.0001f // deg
+#define IMU_SCALE_GYRO_UNIT   0.1f // mrad/s
+#define IMU_SCALE_MAG_UNIT    0.1f // mgauss
+#define IMU_SCALE_ACC_UNIT    0.1f // mg
+#define IMU_SCALE_FOG_UNIT    0.01f // mdeg/s
 
 #define IMU_USART             UART4
 #define IMU_USART_CLK         RCC_APB1Periph_UART4
@@ -73,19 +73,19 @@
 typedef struct
 {
   bool isAvailable;
-  double euler_x;
-  double euler_y;
-  double euler_z;
-  double gyro_x;
-  double gyro_y;
-  double gyro_z;
-  double mag_x;
-  double mag_y;
-  double mag_z;
-  double acc_x;
-  double acc_y;
-  double acc_z;
-  double gyro_fog;
+  float euler_x;
+  float euler_y;
+  float euler_z;
+  float gyro_x;
+  float gyro_y;
+  float gyro_z;
+  float mag_x;
+  float mag_y;
+  float mag_z;
+  float acc_x;
+  float acc_y;
+  float acc_z;
+  float gyro_fog;
 } STRU_IMU_DATA_T;
 
 /* Initialization and Configuration functions --------------------------------*/

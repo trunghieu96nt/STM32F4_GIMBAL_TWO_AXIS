@@ -39,12 +39,14 @@
 #include "stdlib.h"
 #include "pid.h"
 #include "gimbal_params.h"
+#include "gimbal_control.h"
 
 /* Public variables ----------------------------------------------------------*/
-extern STRU_PID_T stru_PID_AZ_Manual_Pos_Outer;
+extern STRU_PID_T stru_PID_AZ_Manual_Pos;
+extern STRU_PID_T stru_PID_EL_Manual_Pos;
 
-extern STRU_PID_T stru_PID_EL_Manual_Pos_Outer;
-extern STRU_PID_T stru_PID_EL_Manual_Vel_Inner;
+extern STRU_PID_T stru_PID_EL_Pointing_Outer;
+extern STRU_PID_T stru_PID_AZ_Pointing_Inner;
 /* Private define ------------------------------------------------------------*/
 
 /* Private variables ---------------------------------------------------------*/
@@ -105,6 +107,7 @@ void Gimbal_Receiver_Init(void)
   USART_Cmd(STM_USART, ENABLE); 
   USART_ClearFlag(STM_USART, USART_FLAG_TC);
 
+  /* DMA RX configuration */
   RCC_AHB1PeriphClockCmd(STM_AHB_PERIPH_DMA, ENABLE);
   DMA_DeInit(STM_RX_DMA_STREAM);  
   DMA_InitStructure.DMA_Channel            = STM_RX_DMA_CHANNEL;
@@ -127,8 +130,68 @@ void Gimbal_Receiver_Init(void)
   USART_DMACmd(STM_USART, USART_DMAReq_Rx, ENABLE);  
   /* Enable DMA RX Channel */
   DMA_Cmd(STM_RX_DMA_STREAM, ENABLE);
+  
+  /* DMA TX configuration */
+  DMA_DeInit(STM_TX_DMA_STREAM);
+  DMA_InitStructure.DMA_Channel            = STM_TX_DMA_CHANNEL;
+  DMA_InitStructure.DMA_DIR                = DMA_DIR_MemoryToPeripheral;
+  DMA_InitStructure.DMA_Memory0BaseAddr    = 0; //(uint32_t)&au8HMITxBuff[0]; //temporary
+  DMA_InitStructure.DMA_PeripheralBaseAddr = STM_DATA_REG;   
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+  DMA_InitStructure.DMA_MemoryDataSize     = DMA_MemoryDataSize_Byte;
+  DMA_InitStructure.DMA_Priority           = DMA_Priority_Low;
+  DMA_InitStructure.DMA_FIFOMode           = DMA_FIFOMode_Disable;
+  DMA_InitStructure.DMA_FIFOThreshold      = DMA_FIFOThreshold_Full;
+  DMA_InitStructure.DMA_MemoryInc          = DMA_MemoryInc_Enable;
+  DMA_InitStructure.DMA_PeripheralInc      = DMA_PeripheralInc_Disable;
+  DMA_InitStructure.DMA_Mode               = DMA_Mode_Normal;
+  DMA_InitStructure.DMA_BufferSize         = 0;
+  DMA_InitStructure.DMA_MemoryBurst        = DMA_MemoryBurst_Single;
+  DMA_InitStructure.DMA_PeripheralBurst    = DMA_PeripheralBurst_Single;
+  DMA_Init(STM_TX_DMA_STREAM, &DMA_InitStructure);
+  
+  // Enable DMA Stream Transfer Complete interrupt
+  //DMA_ITConfig(STM_TX_DMA_STREAM, DMA_IT_TC, ENABLE);
+  
+  // Enable USART DMA TX request
+  USART_DMACmd(STM_USART, USART_DMAReq_Tx, ENABLE);  
 }
 
+/**
+  * @brief  Gimbal_Receiver_Send
+  * @note   ...
+  * @param  const uint8_t *pu8Message: pointer message to send
+  * @param  uint32_t ui32MessageSize: number of char to send
+  * @retval true if success and vice versa
+  */
+bool Gimbal_Receiver_Send(const uint8_t *pu8Message, uint32_t ui32MessageSize)
+{
+  if(ui32MessageSize > STM_TXBUFF_SIZE)
+  {
+    return false;
+  }
+  else
+  {
+    //check flag
+    
+    //clear flag
+    DMA_ClearFlag(STM_TX_DMA_STREAM, STM_TX_DMA_FLAG);
+    DMA_MemoryTargetConfig(STM_TX_DMA_STREAM, (uint32_t)pu8Message, DMA_Memory_0);
+    DMA_SetCurrDataCounter(STM_TX_DMA_STREAM, ui32MessageSize);
+    //STM_TX_DMA_STREAM->NDTR = BUFF_SIZE;
+    DMA_Cmd(STM_TX_DMA_STREAM, ENABLE);
+    return true;
+  }
+}
+
+/**
+  * @brief  jsoneq
+  * @note   compare token
+  * @param  const char *json: json string
+  * @param  jsmntok_t *tok: parsed token
+  * @param  const char *s: string to search
+  * @retval none
+  */
 bool jsoneq(const char *json, jsmntok_t *tok, const char *s)
 {
   if (tok->type == JSMN_STRING && (int) strlen(s) == tok->end - tok->start &&
@@ -138,7 +201,6 @@ bool jsoneq(const char *json, jsmntok_t *tok, const char *s)
   return false;
 }
 
-/* Functions ---------------------------------------------------------*/
 /**
   * @brief  Gimbal_Receiver_Handler
   * @note   Handle by jsonm
@@ -167,77 +229,93 @@ void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
   /* Handle data */
   if(jsoneq((char *)pui8STMFrame, &t[2], "PIDTunner") == true)
   {
-    if(jsoneq((char *)pui8STMFrame, &t[4], "AZ_MANUAL_POS_OUTER") == true)
+    if(jsoneq((char *)pui8STMFrame, &t[4], "AZ_MANUAL_POS") == true)
     {
       if(jsoneq((char *)pui8STMFrame, &t[5], "Save") == true)
       {
-        Gimbal_Params_Save(PARAMS_PID_AZ_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_AZ_Manual_Pos_Outer);
+        Gimbal_Params_Save(PARAMS_PID_AZ_MANUAL_POS, (uint8_t *)&stru_PID_AZ_Manual_Pos);
       }
       else
       {
         memcpy(ui8HandleBuff, pui8STMFrame + t[6].start, t[6].end - t[6].start);
         ui8HandleBuff[t[6].end - t[6].start] = 0;
-        PID_Kp_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        PID_Kp_Set(&stru_PID_AZ_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.001f);
         
         memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
         ui8HandleBuff[t[8].end - t[8].start] = 0;
-        PID_Ki_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        PID_Ki_Set(&stru_PID_AZ_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.001f);
         
         memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
         ui8HandleBuff[t[10].end - t[10].start] = 0;
-        PID_Kd_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        PID_Kd_Set(&stru_PID_AZ_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.001f);
       }
     }
-    else if(jsoneq((char *)pui8STMFrame, &t[4], "EL_MANUAL_POS_OUTER") == true)
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "EL_MANUAL_POS") == true)
     {
-      memcpy(ui8HandleBuff, pui8STMFrame + t[6].start, t[6].end - t[6].start);
-      ui8HandleBuff[t[6].end - t[6].start] = 0;
-      PID_Kp_Set(&stru_PID_EL_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
-      
-      memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
-      ui8HandleBuff[t[8].end - t[8].start] = 0;
-      PID_Ki_Set(&stru_PID_EL_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
-      
-      memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
-      ui8HandleBuff[t[10].end - t[10].start] = 0;
-      PID_Kd_Set(&stru_PID_EL_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      if(jsoneq((char *)pui8STMFrame, &t[5], "Save") == true)
+      {
+        Gimbal_Params_Save(PARAMS_PID_EL_MANUAL_POS, (uint8_t *)&stru_PID_EL_Manual_Pos);
+      }
+      else
+      {
+        memcpy(ui8HandleBuff, pui8STMFrame + t[6].start, t[6].end - t[6].start);
+        ui8HandleBuff[t[6].end - t[6].start] = 0;
+        PID_Kp_Set(&stru_PID_EL_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        
+        memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
+        ui8HandleBuff[t[8].end - t[8].start] = 0;
+        PID_Ki_Set(&stru_PID_EL_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        
+        memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
+        ui8HandleBuff[t[10].end - t[10].start] = 0;
+        PID_Kd_Set(&stru_PID_EL_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      }
     }
-    else if(jsoneq((char *)pui8STMFrame, &t[4], "EL_MANUAL_VEL_INNER") == true)
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "AZ_POINTING_INNER") == true)
     {
-      memcpy(ui8HandleBuff, pui8STMFrame + t[6].start, t[6].end - t[6].start);
-      ui8HandleBuff[t[6].end - t[6].start] = 0;
-      PID_Kp_Set(&stru_PID_EL_Manual_Vel_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
-      
-      memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
-      ui8HandleBuff[t[8].end - t[8].start] = 0;
-      PID_Ki_Set(&stru_PID_EL_Manual_Vel_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
-      
-      memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
-      ui8HandleBuff[t[10].end - t[10].start] = 0;
-      PID_Kd_Set(&stru_PID_EL_Manual_Vel_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      if(jsoneq((char *)pui8STMFrame, &t[5], "Save") == true)
+      {
+        Gimbal_Params_Save(PARAMS_PID_EL_MANUAL_POS, (uint8_t *)&stru_PID_EL_Manual_Pos);
+      }
+      else
+      {
+        memcpy(ui8HandleBuff, pui8STMFrame + t[6].start, t[6].end - t[6].start);
+        ui8HandleBuff[t[6].end - t[6].start] = 0;
+        PID_Kp_Set(&stru_PID_AZ_Pointing_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        
+        memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
+        ui8HandleBuff[t[8].end - t[8].start] = 0;
+        PID_Ki_Set(&stru_PID_AZ_Pointing_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        
+        memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
+        ui8HandleBuff[t[10].end - t[10].start] = 0;
+        PID_Kd_Set(&stru_PID_AZ_Pointing_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+      }
     }
   }
   else if(jsoneq((char *)pui8STMFrame, &t[2], "Control") == true)
   {
     if(jsoneq((char *)pui8STMFrame, &t[4], "Manual") == true)
     {
-      if(jsoneq((char *)pui8STMFrame, &t[6], "Az") == true)
+      if(jsoneq((char *)pui8STMFrame, &t[6], "AZ") == true)
       {
         memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
         ui8HandleBuff[t[8].end - t[8].start] = 0;
-        PID_MaxSetPointStep_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.1f * 0.001f);
+        PID_MaxSetPointStep_Set(&stru_PID_AZ_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.1f * 0.001f);
         
         memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
         ui8HandleBuff[t[10].end - t[10].start] = 0;
-        PID_SetPoint_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.1f);
-        
-        Gimbal_Sender_Send((uint8_t *)"{\"Status\": \"Ok\"}", strlen("{\"Status\": \"Ok\"}"));
+        PID_SetPoint_Set(&stru_PID_AZ_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.1f);
       }
-      else if(jsoneq((char *)pui8STMFrame, &t[6], "El") == true)
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "EL") == true)
       {
         memcpy(ui8HandleBuff, pui8STMFrame + t[8].start, t[8].end - t[8].start);
         ui8HandleBuff[t[8].end - t[8].start] = 0;
-        PID_SetPoint_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        PID_MaxSetPointStep_Set(&stru_PID_EL_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.1f * 0.001f);
+        
+        memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
+        ui8HandleBuff[t[10].end - t[10].start] = 0;
+        PID_SetPoint_Set(&stru_PID_EL_Manual_Pos, (float)atoi((char *)ui8HandleBuff) * 0.1f);
       }
     }
     else if(jsoneq((char *)pui8STMFrame, &t[4], "Pointing") == true)
@@ -249,17 +327,46 @@ void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
       
     }
   }
-  /* Loop over all keys of the root object */
-//  for (i = 1; i < r; i++)
-//  {
-//    if (jsoneq((char *)pui8STMFrame, &t[i], "SetPoint") == true)
-//    {
-//      memcpy(ui8HandleBuff, pui8STMFrame + t[i + 1].start, t[i+1].end - t[i + 1].start);
-//      ui8HandleBuff[t[i + 1].end - t[i + 1].start] = 0;
-//      PID_SetPoint_Set(&stru_PID_AZ_Manual_Pos_Outer, (float)atoi((char *)ui8HandleBuff), false);
-//      i++;
-//    }
-//  }
+  else if(jsoneq((char *)pui8STMFrame, &t[2], "ChangeMode") == true)
+  {
+    if(jsoneq((char *)pui8STMFrame, &t[4], "Home") == true)
+    {
+      if(jsoneq((char *)pui8STMFrame, &t[6], "AZ") == true)
+        Gimbal_Control_Change_Mode(STATE_HOME, STATE_KEEP);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "EL") == true)
+        Gimbal_Control_Change_Mode(STATE_KEEP, STATE_HOME);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "Both") == true)
+        Gimbal_Control_Change_Mode(STATE_HOME, STATE_HOME);
+    }
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "Manual") == true)
+    {
+      if(jsoneq((char *)pui8STMFrame, &t[6], "AZ") == true)
+        Gimbal_Control_Change_Mode(STATE_MANUAL, STATE_KEEP);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "EL") == true)
+        Gimbal_Control_Change_Mode(STATE_KEEP, STATE_MANUAL);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "Both") == true)
+        Gimbal_Control_Change_Mode(STATE_MANUAL, STATE_MANUAL);
+    }
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "Pointing") == true)
+    {
+      if(jsoneq((char *)pui8STMFrame, &t[6], "AZ") == true)
+        Gimbal_Control_Change_Mode(STATE_POINTING, STATE_KEEP);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "EL") == true)
+        Gimbal_Control_Change_Mode(STATE_KEEP, STATE_POINTING);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "Both") == true)
+        Gimbal_Control_Change_Mode(STATE_POINTING, STATE_POINTING);
+    }
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "Tracking") == true)
+    {
+      if(jsoneq((char *)pui8STMFrame, &t[6], "AZ") == true)
+        Gimbal_Control_Change_Mode(STATE_TRACKING, STATE_KEEP);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "EL") == true)
+        Gimbal_Control_Change_Mode(STATE_KEEP, STATE_TRACKING);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "Both") == true)
+        Gimbal_Control_Change_Mode(STATE_TRACKING, STATE_TRACKING);
+    }
+  }
+  Gimbal_Sender_Send((uint8_t *)"{\"Status\": \"Ok\"}", strlen("{\"Status\": \"Ok\"}"));
 }
 
 /* Functions ---------------------------------------------------------*/
@@ -513,9 +620,16 @@ void Gimbal_Sender_Init(void)
   //DMA_Cmd(HMI_TX_DMA_STREAM, ENABLE);
 }
 
-bool Gimbal_Sender_Send(uint8_t *pu8Message, uint32_t ui32MessageSize)
+/**
+  * @brief  Gimbal_Sender_Send
+  * @note   ...
+  * @param  const uint8_t *pu8Message: pointer message to send
+  * @param  uint32_t ui32MessageSize: number of char to send
+  * @retval true if success and vice versa
+  */
+bool Gimbal_Sender_Send(const uint8_t *pu8Message, uint32_t ui32MessageSize)
 {
-  if(ui32MessageSize > HMI_RXBUFF_SIZE)
+  if(ui32MessageSize > HMI_TXBUFF_SIZE)
   {
     return false;
   }
@@ -530,6 +644,6 @@ bool Gimbal_Sender_Send(uint8_t *pu8Message, uint32_t ui32MessageSize)
     //HMI_TX_DMA_STREAM->NDTR = BUFF_SIZE;
     DMA_Cmd(HMI_TX_DMA_STREAM, ENABLE);
     return true;
-	}
+  }
 }
 /*********************************END OF FILE**********************************/

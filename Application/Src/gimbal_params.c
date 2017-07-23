@@ -39,10 +39,9 @@
 #include "string.h"
 
 /* Extern variables ----------------------------------------------------------*/
-extern STRU_PID_T stru_PID_AZ_Manual_Pos_Outer;
+extern STRU_PID_T stru_PID_AZ_Manual_Pos;
+extern STRU_PID_T stru_PID_EL_Manual_Pos;
 
-extern STRU_PID_T stru_PID_EL_Manual_Pos_Outer;
-extern STRU_PID_T stru_PID_EL_Manual_Vel_Inner;
 /* Public variables ----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -51,14 +50,8 @@ static const uint8_t au8ParamsIDLen[NUM_PARAMS_MAX] =
 {
   /* Length. */     /* PARAMS_ID. */
   2,                //CODE_VERSION = 0,
-  12,               //PARAMS_PID_AZ_MANUAL_POS_OUTER,
-  12,               //PARAMS_PID_EL_MANUAL_POS_OUTER,
-  12,               //PARAMS_PID_EL_MANUAL_VEL_INNER,
-  
-//  12,               //PARAMS_PID_AZ_POINTING_POS_OUTER,
-//  12,               //PARAMS_PID_AZ_POINTING_VEL_INNER,
-//  12,               //PARAMS_PID_EL_POINTING_POS_OUTER
-//  12,               //PARAMS_PID_EL_POINTING_VEL_INNER
+  12,               //PARAMS_PID_AZ_MANUAL_POS,
+  12,               //PARAMS_PID_EL_MANUAL_POS,
 };
 /* Private function prototypes -----------------------------------------------*/
 uint32_t Gimbal_Params_Get_Pos(ENUM_PARAMS_T enumParams);
@@ -89,15 +82,6 @@ uint32_t Gimbal_Params_Get_Pos(ENUM_PARAMS_T enumParams)
   */
 bool Gimbal_Params_Save(ENUM_PARAMS_T enumParams, const uint8_t *pu8Data)
 {
-  /* Test */
-//  char cTest[20];
-//  uint32_t ui32Idx = 0, ui32Test;
-//  for(ui32Idx = 0; ui32Idx < au8ParamsIDLen[enumParams]; ui32Idx++)
-//  {
-//    ui32Test = Gimbal_Params_Get_Pos(enumParams);
-//    printf(cTest,"%d\r\n", ui32Test);
-//    Gimbal_Sender_Send((uint8_t *)cTest, strlen(cTest));
-//  }
   return EEP_WriteBytes(pu8Data, Gimbal_Params_Get_Pos(enumParams), au8ParamsIDLen[enumParams]);
 }
 
@@ -122,9 +106,8 @@ bool Gimbal_Params_Load(ENUM_PARAMS_T enumParams, uint8_t *pu8Data)
 void Gimbal_Params_Save_Default(void)
 {
   Gimbal_Params_Save(CODE_VERSION, CODE_VESION_ARRAY);
-  Gimbal_Params_Save(PARAMS_PID_AZ_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_AZ_Manual_Pos_Outer);
-  Gimbal_Params_Save(PARAMS_PID_EL_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_EL_Manual_Pos_Outer);
-  Gimbal_Params_Save(PARAMS_PID_EL_MANUAL_VEL_INNER, (uint8_t *)&stru_PID_EL_Manual_Vel_Inner);
+  Gimbal_Params_Save(PARAMS_PID_AZ_MANUAL_POS, (uint8_t *)&stru_PID_AZ_Manual_Pos);
+  Gimbal_Params_Save(PARAMS_PID_EL_MANUAL_POS, (uint8_t *)&stru_PID_EL_Manual_Pos);
 }
 
 /**
@@ -143,9 +126,8 @@ void Gimbal_Params_Load_All(void)
     Gimbal_Params_Save_Default();
   }
   
-  Gimbal_Params_Load(PARAMS_PID_AZ_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_AZ_Manual_Pos_Outer);
-  Gimbal_Params_Load(PARAMS_PID_EL_MANUAL_POS_OUTER, (uint8_t *)&stru_PID_EL_Manual_Pos_Outer);
-  Gimbal_Params_Load(PARAMS_PID_EL_MANUAL_VEL_INNER, (uint8_t *)&stru_PID_EL_Manual_Vel_Inner);
+  Gimbal_Params_Load(PARAMS_PID_AZ_MANUAL_POS, (uint8_t *)&stru_PID_AZ_Manual_Pos);
+  Gimbal_Params_Load(PARAMS_PID_EL_MANUAL_POS, (uint8_t *)&stru_PID_EL_Manual_Pos);
 }
 
 /*********************************END OF FILE**********************************/
