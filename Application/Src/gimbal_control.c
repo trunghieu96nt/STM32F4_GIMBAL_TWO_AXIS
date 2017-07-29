@@ -39,6 +39,7 @@
 #include "gimbal_pwm.h"
 #include "gimbal_enc.h"
 #include "gimbal_adis.h"
+#include "gimbal_utils.h"
 
 /* Extern variables ----------------------------------------------------------*/
 extern STRU_IMU_DATA_T struIMUData;
@@ -53,7 +54,7 @@ STRU_PID_T stru_PID_AZ_Pointing_Inner;
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 float fAZEncAngle, fELEncAngle;
-volatile ENUM_AXIS_STATE_T enumAZAxisState = STATE_TEST_SINE; //STATE_HOME
+volatile ENUM_AXIS_STATE_T enumAZAxisState = STATE_HOME; //STATE_HOME STATE_SINE
 volatile ENUM_AXIS_STATE_T enumELAxisState = STATE_IDLE; //STATE_IDLE
 static volatile bool bAZAxisGoingHome = false;
 static volatile bool bELAxisGoingHome = false;
@@ -106,12 +107,12 @@ void Gimbal_Control_Init(void)
 
 void Gimbal_Control(void)
 {
-  static int sine_idx=0;
+  static uint32_t ui32SineIdx = 0;
+  fAZEncAngle = Gimbal_ENC1_Get_Angle();
   switch(enumAZAxisState)
   {
     case STATE_IDLE:
     { 
-      fAZEncAngle = Gimbal_ENC1_Get_Angle();
       break;
     }
     case STATE_HOME:
@@ -137,18 +138,14 @@ void Gimbal_Control(void)
       break;
     case STATE_POINTING:
       
-      
-      //PID_Calc(&stru_PID_AZ_Pointing_Inner, struIMUData.gyro_z);
-      Gimbal_PWM_AZ_Set_Duty(PID_Calc(&stru_PID_AZ_Pointing_Inner, struIMUData.gyro_z));
+      //stru_PID_AZ_Pointing_Inner.Result = -stru_PID_AZ_Pointing_Inner.Kp * struIMUData.gyro_z;
+      PID_Calc(&stru_PID_AZ_Pointing_Inner, struIMUData.gyro_z);
       //Output PWM 1 - AZ
-      //Gimbal_PWM_AZ_Set_Duty(stru_PID_AZ_Pointing_Inner.Result);// + 0.5f);
+      Gimbal_PWM_AZ_Set_Duty(stru_PID_AZ_Pointing_Inner.Result + 0.5f);
       break;
-    case STATE_TEST_SINE:
-      fAZEncAngle = Gimbal_ENC1_Get_Angle();
-      Gimbal_PWM_AZ_Set_Duty(300*sin(2*3.14159*sine_idx/5000));
-      sine_idx++;
-      if (sine_idx == 5000)
-        sine_idx = 0;
+    case STATE_SINE:
+      Gimbal_PWM_AZ_Set_Duty(300*sin(2 * PI * ui32SineIdx/ 5000));
+      if(++ui32SineIdx == 5000)  ui32SineIdx = 0;
       break;
     default:
       break;

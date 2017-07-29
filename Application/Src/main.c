@@ -29,7 +29,7 @@ void Board_Init()
     }
   }
   delay_us(500000);
-  Gimbal_Sender_Send((uint8_t *)"{\"Status\": \"Ok\"}", strlen("{\"Status\": \"Ok\"}"));
+  Gimbal_Receiver_Send((uint8_t *)"{\"Status\": \"Ok\"}", strlen("{\"Status\": \"Ok\"}"));
 }
 
 int main(void)
@@ -40,7 +40,7 @@ int main(void)
   {
     //Command from PC
     Gimbal_PC_Read_Timeout(100);
-    
+
     //Read ADIS data
     Gimbal_ADIS_Read_IsTimeout(100);
     if(struIMUData.isAvailable == false)
@@ -65,6 +65,7 @@ int main(void)
     {
       tick_flag = false;
       Gimbal_Control();
+      Gimbal_Led_Toggle(LED3_PIN);
     }
   }
 }

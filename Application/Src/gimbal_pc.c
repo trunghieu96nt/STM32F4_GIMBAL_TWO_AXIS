@@ -365,8 +365,17 @@ void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
       else if(jsoneq((char *)pui8STMFrame, &t[6], "Both") == true)
         Gimbal_Control_Change_Mode(STATE_TRACKING, STATE_TRACKING);
     }
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "Sine") == true)
+    {
+      if(jsoneq((char *)pui8STMFrame, &t[6], "AZ") == true)
+        Gimbal_Control_Change_Mode(STATE_SINE, STATE_KEEP);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "EL") == true)
+        Gimbal_Control_Change_Mode(STATE_KEEP, STATE_SINE);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "Both") == true)
+        Gimbal_Control_Change_Mode(STATE_SINE, STATE_SINE);
+    }
   }
-  Gimbal_Sender_Send((uint8_t *)"{\"Status\": \"Ok\"}", strlen("{\"Status\": \"Ok\"}"));
+  Gimbal_Receiver_Send((uint8_t *)"{\"Status\": \"Ok\"}", strlen("{\"Status\": \"Ok\"}"));
 }
 
 /* Functions ---------------------------------------------------------*/

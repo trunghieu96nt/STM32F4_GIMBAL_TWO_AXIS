@@ -26,6 +26,9 @@
 #include "stdint.h"
 
 /* Define --------------------------------------------------------------------*/
+#ifndef PI
+#define PI (3.141592653589793)
+#endif
 /* Initialization and Configuration functions --------------------------------*/
 /* Functions -----------------------------------------------------------------*/
 void delay_us(uint32_t micros);

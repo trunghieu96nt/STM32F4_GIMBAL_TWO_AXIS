@@ -33,7 +33,7 @@ typedef enum {
   STATE_MANUAL,
   STATE_POINTING,
   STATE_TRACKING,
-  STATE_TEST_SINE,
+  STATE_SINE,
 } ENUM_AXIS_STATE_T;
 
 /* Initialization and Configuration functions --------------------------------*/
