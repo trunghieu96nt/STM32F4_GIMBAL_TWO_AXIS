@@ -289,7 +289,7 @@ void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
         
         memcpy(ui8HandleBuff, pui8STMFrame + t[10].start, t[10].end - t[10].start);
         ui8HandleBuff[t[10].end - t[10].start] = 0;
-        PID_Kd_Set(&stru_PID_AZ_Pointing_Inner, (float)atoi((char *)ui8HandleBuff) * 0.001f);
+        PID_Kd_Set(&stru_PID_AZ_Pointing_Inner, (float)atoi((char *)ui8HandleBuff) * 0.00001f);
       }
     }
   }
@@ -329,7 +329,16 @@ void Gimbal_Receiver_Handler(uint8_t *pui8STMFrame)
   }
   else if(jsoneq((char *)pui8STMFrame, &t[2], "ChangeMode") == true)
   {
-    if(jsoneq((char *)pui8STMFrame, &t[4], "Home") == true)
+    if(jsoneq((char *)pui8STMFrame, &t[4], "Idle") == true)
+    {
+      if(jsoneq((char *)pui8STMFrame, &t[6], "AZ") == true)
+        Gimbal_Control_Change_Mode(STATE_IDLE, STATE_KEEP);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "EL") == true)
+        Gimbal_Control_Change_Mode(STATE_KEEP, STATE_IDLE);
+      else if(jsoneq((char *)pui8STMFrame, &t[6], "Both") == true)
+        Gimbal_Control_Change_Mode(STATE_IDLE, STATE_IDLE);
+    }
+    else if(jsoneq((char *)pui8STMFrame, &t[4], "Home") == true)
     {
       if(jsoneq((char *)pui8STMFrame, &t[6], "AZ") == true)
         Gimbal_Control_Change_Mode(STATE_HOME, STATE_KEEP);

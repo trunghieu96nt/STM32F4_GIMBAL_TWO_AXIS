@@ -29,6 +29,8 @@
 #ifndef PI
 #define PI (3.141592653589793)
 #endif
+#define RAD_TO_DEGREE       (180 / PI)
+#define DEGREE_TO_RAD       (PI / 180)
 /* Initialization and Configuration functions --------------------------------*/
 /* Functions -----------------------------------------------------------------*/
 void delay_us(uint32_t micros);

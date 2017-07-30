@@ -53,11 +53,12 @@ STRU_PID_T stru_PID_AZ_Pointing_Inner;
 
 /* Private define ------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
-float fAZEncAngle, fELEncAngle;
+float fAZEncAngle, fELEncAngle, test;
 volatile ENUM_AXIS_STATE_T enumAZAxisState = STATE_HOME; //STATE_HOME STATE_SINE
-volatile ENUM_AXIS_STATE_T enumELAxisState = STATE_IDLE; //STATE_IDLE
+volatile ENUM_AXIS_STATE_T enumELAxisState = STATE_HOME; //STATE_IDLE
 static volatile bool bAZAxisGoingHome = false;
 static volatile bool bELAxisGoingHome = false;
+static volatile uint32_t ui32AZSineIdx = 0, ui32ELSineIdx = 0;
 
 /* Private function prototypes -----------------------------------------------*/
 void Gimbal_Ctl_Init_Az(void);
@@ -93,13 +94,13 @@ void Gimbal_Control_Init(void)
   PID_Kd_Set(&stru_PID_EL_Manual_Pos, 0.01);
   PID_UseSetPointRamp_Set(&stru_PID_EL_Manual_Pos, 1);
   PID_MaxSetPointStep_Set(&stru_PID_EL_Manual_Pos, 0.01);
-  PID_MaxResponse_Set(&stru_PID_EL_Manual_Pos, 200);
+  PID_MaxResponse_Set(&stru_PID_EL_Manual_Pos, 500);
   
   /* Pointing mode */
   PID_Init(&stru_PID_AZ_Pointing_Inner);
-  PID_dPartAlpha_Set(&stru_PID_AZ_Pointing_Inner, 0.5);
-  PID_DeadBand_Set(&stru_PID_AZ_Pointing_Inner, 100);
-  //PID_MaxResponse_Set(&stru_PID_AZ_Pointing_Inner, 900);
+  PID_Kp_Set(&stru_PID_AZ_Pointing_Inner, 0.10);
+  PID_Ki_Set(&stru_PID_AZ_Pointing_Inner, 20);
+  PID_Kd_Set(&stru_PID_AZ_Pointing_Inner, 0.0004);
   
   /* Tracking mode */
   
@@ -107,8 +108,8 @@ void Gimbal_Control_Init(void)
 
 void Gimbal_Control(void)
 {
-  static uint32_t ui32SineIdx = 0;
   fAZEncAngle = Gimbal_ENC1_Get_Angle();
+  fELEncAngle = Gimbal_ENC0_Get_Angle();
   switch(enumAZAxisState)
   {
     case STATE_IDLE:
@@ -129,9 +130,7 @@ void Gimbal_Control(void)
       }
       break;
     case STATE_MANUAL:
-      fAZEncAngle = Gimbal_ENC1_Get_Angle();
-      PID_Calc(&stru_PID_AZ_Manual_Pos, fAZEncAngle);
-      //PID_Calc(&stru_PID_AZ_Manual_Pos, Gimbal_ENC1_Get_Angle());
+      PID_Calc(&stru_PID_AZ_Manual_Pos, Gimbal_ENC1_Get_Angle());
       
       //Output PWM 1 - AZ
       Gimbal_PWM_AZ_Set_Duty(stru_PID_AZ_Manual_Pos.Result + 0.5f);
@@ -141,11 +140,13 @@ void Gimbal_Control(void)
       //stru_PID_AZ_Pointing_Inner.Result = -stru_PID_AZ_Pointing_Inner.Kp * struIMUData.gyro_z;
       PID_Calc(&stru_PID_AZ_Pointing_Inner, struIMUData.gyro_z);
       //Output PWM 1 - AZ
-      Gimbal_PWM_AZ_Set_Duty(stru_PID_AZ_Pointing_Inner.Result + 0.5f);
+      Gimbal_PWM_AZ_Set_Duty(stru_PID_AZ_Pointing_Inner.Result / cos(Gimbal_ENC0_Get_Angle() * DEGREE_TO_RAD) + 0.5f);
+      //test = stru_PID_AZ_Pointing_Inner.Result / cos(Gimbal_ENC0_Get_Angle() * DEGREE_TO_RAD) + 0.5f;
+      //Gimbal_PWM_AZ_Set_Duty(stru_PID_AZ_Pointing_Inner.Result + 0.5f);
       break;
     case STATE_SINE:
-      Gimbal_PWM_AZ_Set_Duty(300*sin(2 * PI * ui32SineIdx/ 5000));
-      if(++ui32SineIdx == 5000)  ui32SineIdx = 0;
+      Gimbal_PWM_AZ_Set_Duty(300*sin(2 * PI * ui32AZSineIdx/ 5000));
+      if(++ui32AZSineIdx == 5000) ui32AZSineIdx = 0;
       break;
     default:
       break;
@@ -176,6 +177,10 @@ void Gimbal_Control(void)
       
       //Output PWM 0 - EL
       Gimbal_PWM_EL_Set_Duty(stru_PID_EL_Manual_Pos.Result + 0.5f);
+      break;
+    case STATE_SINE:
+      Gimbal_PWM_EL_Set_Duty(200*sin(2 * PI * ui32ELSineIdx/ 5000));
+      if(++ui32ELSineIdx == 5000) ui32ELSineIdx = 0;
       break;
     default:
       break;
@@ -211,6 +216,9 @@ void Gimbal_Control_Change_Mode(ENUM_AXIS_STATE_T enumAZState, ENUM_AXIS_STATE_T
         break;
       case STATE_TRACKING:
         break;
+      case STATE_SINE:
+        ui32AZSineIdx = 0;
+        break;
       default:
         break;
     }
@@ -231,7 +239,7 @@ void Gimbal_Control_Change_Mode(ENUM_AXIS_STATE_T enumAZState, ENUM_AXIS_STATE_T
         PID_Reset(&stru_PID_EL_Manual_Pos);
         // set SetPointBuff
         PID_SetPoint_Set(&stru_PID_EL_Manual_Pos, Gimbal_ENC0_Get_Angle());
-        PID_UseSetPointRamp_Set(&stru_PID_EL_Manual_Pos, 0); 
+        PID_UseSetPointRamp_Set(&stru_PID_EL_Manual_Pos, 0);
         // set SetPoint
         PID_SetPoint_Set(&stru_PID_EL_Manual_Pos, Gimbal_ENC0_Get_Angle());
         //Re-enable useRamp
@@ -240,6 +248,9 @@ void Gimbal_Control_Change_Mode(ENUM_AXIS_STATE_T enumAZState, ENUM_AXIS_STATE_T
       case STATE_POINTING:
         break;
       case STATE_TRACKING:
+        break;
+      case STATE_SINE:
+        ui32ELSineIdx = 0;
         break;
       default:
         break;
@@ -264,7 +275,7 @@ void Gimbal_Ctl_Init_El(void)
   Gimbal_ENC0_Reset();
   El_Home_Rising_Unregister();
   El_Home_Falling_Unregister();
-  Gimbal_Control_Change_Mode(STATE_KEEP, STATE_MANUAL);
+  Gimbal_Control_Change_Mode(STATE_KEEP, STATE_IDLE);
   bELAxisGoingHome = false;
 }
 

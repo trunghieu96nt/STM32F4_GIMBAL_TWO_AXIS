@@ -70,7 +70,7 @@
 #define HMI_RX                GPIO_Pin_11
 #define HMI_RX_SOURCE         GPIO_PinSource11
 #define HMI_AF                GPIO_AF_USART3
-#define HMI_BAUDRATE          (uint32_t)115200 //921600 //115200
+#define HMI_BAUDRATE          (uint32_t)921600 //921600 //115200
 
 #define HMI_AHB_PERIPH_DMA    RCC_AHB1Periph_DMA1
 #define HMI_DATA_REG          (uint32_t)HMI_USART + 0x04
